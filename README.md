@@ -1,2 +1,2 @@
-# DragonECS-Relations
+# Relations between entities for DragonECS
  

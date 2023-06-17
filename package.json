@@ -1,0 +1,23 @@
+{
+    "name": "com.dcfa_pixels.dragonecs-relations",
+    "author": 
+    {
+        "name": "DCFApixels",
+        "url": "https://github.com/DCFApixels/DragonECS-Relations"
+    },
+    "displayName": "DragonECS-Relations",
+    "description": "Relations between entities for DragonECS",
+    "unity": "2020.3",
+    "version": "0.1.0",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DCFApixels/DragonECS-Relations.git"
+    },
+    "keywords":
+    [
+        "ecs",
+        "dragonecs",
+        "extension",
+        "add-on"
+    ]
+}
