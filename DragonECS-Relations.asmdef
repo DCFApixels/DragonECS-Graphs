@@ -1,3 +1,16 @@
 {
-	"name": "DragonECS-Relations"
+    "name": "DragonECS-Relations",
+    "rootNamespace": "",
+    "references": [
+        "GUID:abb125fa67fff1e45914d0825236f608"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
 }
