@@ -52,26 +52,16 @@ namespace DCFApixels.DragonECS.Relations.Utils
         /// <returns> new node index</returns>
         public int InsertAfter(int nodeIndex, int value)
         {
-            int newNodeIndex;
-            if (_recycledNodesCount > 0)
-            {
-                newNodeIndex = _recycledNodes[--_recycledNodesCount];
-                _count++;
-            }
-            else
-            {
-                newNodeIndex = ++_count;
-            }
+            _count++;
+            int newNodeIndex = _recycledNodesCount > 0 ? _recycledNodes[--_recycledNodesCount] : _count;
 
             ref Node prevNode = ref _nodes[nodeIndex];
             ref Node nextNode = ref _nodes[prevNode.next];
-
             _nodes[newNodeIndex].Set(value, nextNode.prev, prevNode.next);
-
             prevNode.next = newNodeIndex;
             nextNode.prev = newNodeIndex;
-
-            _lastNodeIndex = newNodeIndex;
+            if(prevNode.next == 0)
+                _lastNodeIndex = newNodeIndex;
             return newNodeIndex;
         }
         //public int InsertBefore(int nodeIndex, int value) { }
@@ -83,8 +73,6 @@ namespace DCFApixels.DragonECS.Relations.Utils
             ref var node = ref _nodes[nodeIndex];
             _nodes[node.next].prev = node.prev;
             _nodes[node.prev].next = node.next;
-
-           // node = Node.Empty;
 
             if (_recycledNodesCount >= _recycledNodes.Length)
                 Array.Resize(ref _recycledNodes, _recycledNodes.Length << 1);
