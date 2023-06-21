@@ -8,7 +8,7 @@ using System.Runtime.InteropServices;
 
 namespace DCFApixels.DragonECS.Relations.Utils
 {
-    public class SparseArray64<TValue>
+    internal class SparseArray64<TValue>
     {
         public const int MIN_CAPACITY_BITS_OFFSET = 4;
         public const int MIN_CAPACITY = 1 << MIN_CAPACITY_BITS_OFFSET;
@@ -140,6 +140,17 @@ namespace DCFApixels.DragonECS.Relations.Utils
         public bool TryGetValue(long key, out TValue value)
         {
             int index = FindEntry(key);
+            if (index < 0)
+            {
+                value = default;
+                return false;
+            }
+            value = _entries[index].value;
+            return true;
+        }
+        public bool TryGetValue(long keyX, long keyY, out TValue value)
+        {
+            int index = FindEntry(keyX + (keyY << 32));
             if (index < 0)
             {
                 value = default;

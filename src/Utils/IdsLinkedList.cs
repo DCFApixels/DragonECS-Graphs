@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Diagnostics;
 using System.Reflection;
+using System.Reflection.Metadata.Ecma335;
 using System.Runtime.InteropServices;
 
 namespace DCFApixels.DragonECS.Relations.Utils
@@ -22,6 +23,7 @@ namespace DCFApixels.DragonECS.Relations.Utils
         public int Count => _count;
         public int Capacity => _nodes.Length;
         public int Last => _lastNodeIndex;
+        public ReadOnlySpan<Node> Nodes => new ReadOnlySpan<Node>(_nodes);
         #endregion
 
         #region Constructors
@@ -52,19 +54,34 @@ namespace DCFApixels.DragonECS.Relations.Utils
         /// <returns> new node index</returns>
         public int InsertAfter(int nodeIndex, int value)
         {
-            _count++;
+            if(++_count >= _nodes.Length)
+                Array.Resize(ref _nodes, _nodes.Length << 1);
             int newNodeIndex = _recycledNodesCount > 0 ? _recycledNodes[--_recycledNodesCount] : _count;
 
             ref Node prevNode = ref _nodes[nodeIndex];
             ref Node nextNode = ref _nodes[prevNode.next];
+            if (prevNode.next == 0)
+                _lastNodeIndex = newNodeIndex;
             _nodes[newNodeIndex].Set(value, nextNode.prev, prevNode.next);
             prevNode.next = newNodeIndex;
             nextNode.prev = newNodeIndex;
-            if(prevNode.next == 0)
-                _lastNodeIndex = newNodeIndex;
+
             return newNodeIndex;
         }
-        //public int InsertBefore(int nodeIndex, int value) { }
+        public int InsertBefore(int nodeIndex, int value) 
+        {
+            if (++_count >= _nodes.Length)
+                Array.Resize(ref _nodes, _nodes.Length << 1);
+            int newNodeIndex = _recycledNodesCount > 0 ? _recycledNodes[--_recycledNodesCount] : _count;
+
+            ref Node nextNode = ref _nodes[nodeIndex];
+            ref Node prevNode = ref _nodes[nextNode.prev];
+            _nodes[newNodeIndex].Set(value, nextNode.prev, prevNode.next);
+            prevNode.next = newNodeIndex;
+            nextNode.prev = newNodeIndex;
+
+            return newNodeIndex;
+        }
         public void Remove(int nodeIndex)
         {
             if(nodeIndex <= 0)
@@ -78,6 +95,37 @@ namespace DCFApixels.DragonECS.Relations.Utils
                 Array.Resize(ref _recycledNodes, _recycledNodes.Length << 1);
             _recycledNodes[_recycledNodesCount++] = nodeIndex;
             _count--;
+        }
+
+        public void RemoveSpan(int startNodeIndex, int count)
+        {
+            if (count <= 0)
+                return;
+
+            int endNodeIndex = startNodeIndex;
+
+            if (_recycledNodesCount >= _recycledNodes.Length)
+                Array.Resize(ref _recycledNodes, _recycledNodes.Length << 1);
+            _recycledNodes[_recycledNodesCount++] = startNodeIndex;
+
+            for (int i = 1; i < count; i++)
+            {
+                endNodeIndex = _nodes[endNodeIndex].next;
+                if (endNodeIndex == 0)
+                    throw new ArgumentOutOfRangeException();
+
+                if (_recycledNodesCount >= _recycledNodes.Length)
+                    Array.Resize(ref _recycledNodes, _recycledNodes.Length << 1);
+                _recycledNodes[_recycledNodesCount++] = endNodeIndex;
+            }
+
+            ref var startNode = ref _nodes[startNodeIndex];
+            ref var endNode = ref _nodes[endNodeIndex];
+
+            _nodes[endNode.next].prev = startNode.prev;
+            _nodes[startNode.prev].next = endNode.next;
+
+            _count -= count;
         }
 
         public int Add(int id) => InsertAfter(_lastNodeIndex, id);
@@ -108,39 +156,10 @@ namespace DCFApixels.DragonECS.Relations.Utils
                 this.next = next;
                 this.prev = prev;
             }
-            public override string ToString() => $"node(<:{prev} >:{next} v:{value})";
+            public override string ToString() => $"node({prev}<>{next} v:{value})";
         }
 
-        #region Enumerator/Span
-        public struct Enumerator : IEnumerator<int>
-        {
-            private readonly Node[] _nodes;
-            private int _index;
-            private int _next;
-            public Enumerator(Node[] nodes)
-            {
-                _nodes = nodes;
-                _index = -1;
-                _next = _nodes[Head].next;
-            }
-            public int Current => _nodes[_index].value;
-
-
-            public bool MoveNext()
-            {
-                _index = _next;
-                _next = _nodes[_next].next;
-                return _index > 0;
-            }
-
-            object IEnumerator.Current => Current;
-            void IDisposable.Dispose() { }
-            void IEnumerator.Reset()
-            {
-                _index = -1;
-                _next = Head;
-            }
-        }
+        #region Span/Enumerator
         public readonly ref struct Span
         {
             private readonly IdsLinkedList _source;
@@ -187,7 +206,8 @@ namespace DCFApixels.DragonECS.Relations.Utils
 
         #endregion
 
-        public class DebuggerProxy
+        #region Debug
+        internal class DebuggerProxy
         {
             private IdsLinkedList list;
             public NodeInfo[] Nodes
@@ -206,15 +226,12 @@ namespace DCFApixels.DragonECS.Relations.Utils
                     {
                         index = next;
                         next = nodes[next].next;
-                        if (index > 0 && count-- > 0)
-                        { }
-                        else break;
-
+                        if (!(index > 0 && count-- > 0))
+                            break;
                         ref var node = ref nodes[index];
                         result[i] = new NodeInfo(index, node.prev, node.next, node.value);
                         i++;
                     }
-
                     return result;
                 }
             }
@@ -239,5 +256,6 @@ namespace DCFApixels.DragonECS.Relations.Utils
                 public override string ToString() => $"[{index}] {prev}_{next} - {value}";
             }
         }
+        #endregion
     }
 }

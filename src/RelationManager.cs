@@ -1,89 +1,173 @@
 ﻿using DCFApixels.DragonECS;
 using DCFApixels.DragonECS.Relations.Utils;
+using System.Collections;
+using System.Runtime.CompilerServices;
 
 namespace DragonECS.DragonECS
 {
-    internal static class WorldRelationsMatrix
+    //Relation entity
+    //Relation
+    //Relation component
+    public readonly struct Relations
     {
-        private static SparseArray64<RelationManager> _matrix;
-
-        internal static bool HasRelation(EcsWorld world, EcsWorld otherWorld) => HasRelation(world.id, otherWorld.id);
-        internal static bool HasRelation(int worldID, int otherWorldID) => _matrix.Contains(worldID, otherWorldID);
-
-        internal static RelationManager Register(EcsWorld world, EcsWorld otherWorld, EcsRelationWorld relationWorld)
+        public readonly RelationManager manager;
+        public Relations(RelationManager manager)
         {
-            int worldID = world.id;
-            int otherWorldID = otherWorld.id;
-#if DEBUG
-            if (_matrix.Contains(worldID, otherWorldID))
-                throw new EcsFrameworkException();
-#endif
-            RelationManager manager = new RelationManager(relationWorld, world, otherWorld);
-            _matrix[worldID, otherWorldID] = manager;
-            return manager;
+            this.manager = manager;
         }
-        internal static void Unregister(EcsWorld world, EcsWorld otherWorld)
-        {
-            int worldID = world.id;
-            int otherWorldID = otherWorld.id;
-            //var manager = _matrix[worldID, otherWorldID];
-            _matrix.Remove(worldID, otherWorldID);
-        }
-
-        public static RelationManager Get(EcsWorld world, EcsWorld otherWorld)
-        {
-#if DEBUG
-            if (_matrix.Contains(world.id, otherWorld.id))
-                throw new EcsFrameworkException();
-#endif
-            return _matrix[world.id, otherWorld.id];
-        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ref readonly RelationTargets GetRelationTargets(int relationEntityID) => ref manager.GetRelationTargets(relationEntityID);
     }
-
-    public class RelationManager : IEcsPoolEventListener, IEcsWorldEventListener, IEcsEntityEventListener
+    public class RelationManager : IEcsWorldEventListener, IEcsEntityEventListener
     {
         private EcsRelationWorld _relationWorld;
 
         private EcsWorld _world;
         private EcsWorld _otherWorld;
 
-        private int[] _mapping = new int[256];
-        private IdsLinkedList _idsBasket = new IdsLinkedList(256);
-        private EcsPool<Relation> _relationsPool;
+        private SparseArray64<int> _relationsMatrix = new SparseArray64<int>();
 
+        public readonly Orientation Forward;
+        public readonly Orientation Reverse;
+
+        private RelationTargets[] _relationTargets;
+
+        public EcsWorld World => _world;
         public EcsWorld RelationWorld => _relationWorld;
+        public EcsWorld OtherWorld => _otherWorld;
         public bool IsSolo => _world == _otherWorld;
 
-        internal RelationManager(EcsRelationWorld relationWorld, EcsWorld world, EcsWorld otherWorld)
+        internal RelationManager(EcsWorld world, EcsRelationWorld relationWorld, EcsWorld otherWorld)
         {
             _relationWorld = relationWorld;
             _world = world;
             _otherWorld = otherWorld;
 
-            _relationsPool = relationWorld.GetPool<Relation>();
-            _relationsPool.AddListener(this);
+            _relationTargets = new RelationTargets[relationWorld.Capacity];
+
             _relationWorld.AddListener(worldEventListener: this);
             _relationWorld.AddListener(entityEventListener: this);
+
+            IdsBasket basket = new IdsBasket(256);
+            IdsBasket otherBasket = new IdsBasket(256);
+
+            Forward = new Orientation(this, false, relationWorld, IsSolo, basket, otherBasket);
+            Reverse = new Orientation(this, true, relationWorld, IsSolo, otherBasket, basket);
         }
 
-        void IEcsPoolEventListener.OnAdd(int entityID)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ref readonly RelationTargets GetRelationTargets(int relationEntityID)
         {
-            //_idsBasket.
+            return ref _relationTargets[relationEntityID];
         }
-        void IEcsPoolEventListener.OnGet(int entityID) { }
-        void IEcsPoolEventListener.OnDel(int entityID) { }
 
-        void IEcsWorldEventListener.OnWorldResize(int newSize) { }
+        #region Callbacks
+        void IEcsWorldEventListener.OnWorldResize(int newSize)
+        {
+            Array.Resize(ref _relationTargets, newSize);
+        }
         void IEcsWorldEventListener.OnReleaseDelEntityBuffer(ReadOnlySpan<int> buffer) { }
         void IEcsWorldEventListener.OnWorldDestroy() { }
 
         void IEcsEntityEventListener.OnNewEntity(int entityID) { }
         void IEcsEntityEventListener.OnDelEntity(int entityID)
         {
-
+            ref RelationTargets rel = ref _relationTargets[entityID];
+            if (_relationsMatrix.Contains(rel.entity, rel.otherEntity))
+                Forward.DelRelation(rel.entity, rel.otherEntity);
         }
-    }
+        #endregion
 
+        #region Orientation
+        public readonly struct Orientation
+        {
+            private readonly RelationManager _source;
+
+            private readonly EcsWorld _relationWorld;
+
+            private readonly IdsBasket _basket;
+            private readonly IdsBasket _otherBasket;
+
+            private readonly bool _isSolo;
+
+            private readonly bool _isReverce;
+
+            public Orientation(RelationManager source, bool isReverce, EcsWorld relationWorld, bool isSolo, IdsBasket basket, IdsBasket otherBasket)
+            {
+                _source = source;
+                _isReverce = isReverce;
+                _relationWorld = relationWorld;
+                _isSolo = isSolo;
+                _basket = basket;
+                _otherBasket = otherBasket;
+            }
+
+            #region New/Del
+            public int NewRelation(int entityID, int otherEntityID)
+            {
+                if (HasRelation(entityID, otherEntityID))
+                    throw new EcsRelationException();
+                int e = _relationWorld.NewEmptyEntity();
+                _basket.AddToHead(entityID, otherEntityID);
+                _otherBasket.AddToHead(otherEntityID, entityID);
+                _source._relationTargets[e] = new RelationTargets(entityID, otherEntityID);
+                return e;
+            }
+            public void DelRelation(int entityID, int otherEntityID)
+            {
+                if (!_source._relationsMatrix.TryGetValue(entityID, otherEntityID, out int e))
+                    throw new EcsRelationException();
+                _basket.DelHead(entityID);
+                _otherBasket.Del(entityID);
+                _relationWorld.DelEntity(e);
+                _source._relationTargets[e] = RelationTargets.Empty;
+            }
+            #endregion
+
+            #region Has
+            public bool HasRelation(int entityID, int otherEntityID) => _source._relationsMatrix.Contains(entityID, otherEntityID);
+            public bool HasRelationWith(EcsSubject subject, int entityID, int otherEntityID)
+            {
+                if (subject.World != _relationWorld)
+                    throw new ArgumentException();
+                return _source._relationsMatrix.TryGetValue(entityID, otherEntityID, out int entity) && subject.IsMatches(entity);
+            }
+            #endregion
+
+            #region GetRelation
+            public int GetRelation(int entityID, int otherEntityID)
+            {
+                if (!_source._relationsMatrix.TryGetValue(entityID, otherEntityID, out int e))
+                    throw new EcsRelationException();
+                return e;
+            }
+            public bool TryGetRelation(int entityID, int otherEntityID, out int entity)
+            {
+                return _source._relationsMatrix.TryGetValue(entityID, otherEntityID, out entity);
+            }
+            public bool TryGetRelation(EcsSubject subject, int entityID, int otherEntityID, out int entity)
+            {
+                return _source._relationsMatrix.TryGetValue(entityID, otherEntityID, out entity) && subject.IsMatches(entity);
+            }
+            #endregion
+
+            #region GetRelations
+            //ReadOnlySpan<int> временная заглушка, потому тут будет спан из линкедлиста
+            public ReadOnlySpan<int> GetRelations(int entityID)
+            {
+                throw new NotImplementedException();
+            }
+            //ReadOnlySpan<int> временная заглушка, потому тут будет спан из линкедлиста
+            public ReadOnlySpan<int> GetRelationsWith(EcsSubject subject, int entityID)
+            {
+                if (subject.World != _relationWorld)
+                    throw new ArgumentException();
+                throw new NotImplementedException();
+            }
+            #endregion
+        }
+        #endregion
+    }
 
     public static class WorldRelationExtensions
     {
