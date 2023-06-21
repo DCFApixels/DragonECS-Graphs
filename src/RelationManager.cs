@@ -51,8 +51,8 @@ namespace DragonECS.DragonECS
             IdsBasket basket = new IdsBasket(256);
             IdsBasket otherBasket = new IdsBasket(256);
 
-            Forward = new Orientation(this, false, relationWorld, IsSolo, basket, otherBasket);
-            Reverse = new Orientation(this, true, relationWorld, IsSolo, otherBasket, basket);
+            Forward = new Orientation(this, relationWorld, basket, otherBasket);
+            Reverse = new Orientation(this, relationWorld, otherBasket, basket);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -88,16 +88,10 @@ namespace DragonECS.DragonECS
             private readonly IdsBasket _basket;
             private readonly IdsBasket _otherBasket;
 
-            private readonly bool _isSolo;
-
-            private readonly bool _isReverce;
-
-            public Orientation(RelationManager source, bool isReverce, EcsWorld relationWorld, bool isSolo, IdsBasket basket, IdsBasket otherBasket)
+            public Orientation(RelationManager source, EcsWorld relationWorld, IdsBasket basket, IdsBasket otherBasket)
             {
                 _source = source;
-                _isReverce = isReverce;
                 _relationWorld = relationWorld;
-                _isSolo = isSolo;
                 _basket = basket;
                 _otherBasket = otherBasket;
             }
