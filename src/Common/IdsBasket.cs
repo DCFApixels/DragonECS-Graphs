@@ -1,12 +1,8 @@
-﻿using DCFApixels.DragonECS;
-using DCFApixels.DragonECS.Relations.Utils;
+﻿using DCFApixels.DragonECS.Relations.Utils;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Drawing;
-using System.Linq;
 
-namespace DragonECS.DragonECS
+namespace DCFApixels.DragonECS
 {
     [DebuggerTypeProxy(typeof(DebuggerProxy))]
     public class IdsBasket

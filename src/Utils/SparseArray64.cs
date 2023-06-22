@@ -53,6 +53,8 @@ namespace DCFApixels.DragonECS.Relations.Utils
 
         #region Add
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Add(long keyX, long keyY, TValue value) => Add(keyX + (keyY << 32), value);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Add(long key, TValue value)
         {
 #if DEBUG

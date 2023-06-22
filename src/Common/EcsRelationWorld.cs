@@ -1,6 +1,4 @@
-﻿using DCFApixels.DragonECS;
-
-namespace DragonECS.DragonECS
+﻿namespace DCFApixels.DragonECS
 {
     public sealed class EcsRelationWorld : EcsWorld { }
 }

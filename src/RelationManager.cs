@@ -1,17 +1,16 @@
-﻿using DCFApixels.DragonECS;
-using DCFApixels.DragonECS.Relations.Utils;
-using System.Collections;
+﻿using DCFApixels.DragonECS.Relations.Utils;
+using System;
 using System.Runtime.CompilerServices;
 
-namespace DragonECS.DragonECS
+namespace DCFApixels.DragonECS
 {
     //Relation entity
     //Relation
     //Relation component
-    public readonly struct Relations
+    public readonly struct RelationData
     {
         public readonly RelationManager manager;
-        public Relations(RelationManager manager)
+        public RelationData(RelationManager manager)
         {
             this.manager = manager;
         }
@@ -51,8 +50,8 @@ namespace DragonECS.DragonECS
             IdsBasket basket = new IdsBasket(256);
             IdsBasket otherBasket = new IdsBasket(256);
 
-            Forward = new Orientation(this, relationWorld, basket, otherBasket);
-            Reverse = new Orientation(this, relationWorld, otherBasket, basket);
+            Forward = new Orientation(this, _relationsMatrix, relationWorld, basket, otherBasket, false);
+            Reverse = new Orientation(this, _relationsMatrix, relationWorld, otherBasket, basket, true);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -88,12 +87,17 @@ namespace DragonECS.DragonECS
             private readonly IdsBasket _basket;
             private readonly IdsBasket _otherBasket;
 
-            public Orientation(RelationManager source, EcsWorld relationWorld, IdsBasket basket, IdsBasket otherBasket)
+            private readonly SparseArray64<int> _relationsMatrix;
+
+            private readonly bool _isReverce;
+            internal Orientation(RelationManager source, SparseArray64<int> relationsMatrix, EcsWorld relationWorld, IdsBasket basket, IdsBasket otherBasket, bool isReverce)
             {
                 _source = source;
                 _relationWorld = relationWorld;
                 _basket = basket;
                 _otherBasket = otherBasket;
+                _relationsMatrix = relationsMatrix;
+                _isReverce = isReverce;
             }
 
             #region New/Del
@@ -102,6 +106,7 @@ namespace DragonECS.DragonECS
                 if (HasRelation(entityID, otherEntityID))
                     throw new EcsRelationException();
                 int e = _relationWorld.NewEmptyEntity();
+                _relationsMatrix.Add(entityID, otherEntityID, e);
                 _basket.AddToHead(entityID, otherEntityID);
                 _otherBasket.AddToHead(otherEntityID, entityID);
                 _source._relationTargets[e] = new RelationTargets(entityID, otherEntityID);
@@ -111,6 +116,7 @@ namespace DragonECS.DragonECS
             {
                 if (!_source._relationsMatrix.TryGetValue(entityID, otherEntityID, out int e))
                     throw new EcsRelationException();
+                _relationsMatrix.Remove(entityID, otherEntityID);
                 _basket.DelHead(entityID);
                 _otherBasket.Del(entityID);
                 _relationWorld.DelEntity(e);
@@ -170,17 +176,35 @@ namespace DragonECS.DragonECS
 
     public static class WorldRelationExtensions
     {
+        public static void SetRelationWithSelf(this EcsWorld self) => SetRelationWith(self, self);
         public static void SetRelationWith(this EcsWorld self, EcsWorld otherWorld)
         {
+            if (self == null || otherWorld == null)
+                throw new ArgumentNullException();
             WorldRelationsMatrix.Register(self, otherWorld, new EcsRelationWorld());
         }
+        public static void SetRelationWithSelf(this EcsWorld self, EcsRelationWorld relationWorld) => SetRelationWith(self, relationWorld);
         public static void SetRelationWith(this EcsWorld self, EcsWorld otherWorld, EcsRelationWorld relationWorld)
         {
+            if (self == null || otherWorld == null || relationWorld == null)
+                throw new ArgumentNullException();
             WorldRelationsMatrix.Register(self, otherWorld, relationWorld);
         }
+
+        public static void DelRelationWithSelf(this EcsWorld self, EcsWorld otherWorld) => DelRelationWith(self, self);
         public static void DelRelationWith(this EcsWorld self, EcsWorld otherWorld)
         {
+            if (self == null || otherWorld == null)
+                throw new ArgumentNullException();
             WorldRelationsMatrix.Unregister(self, otherWorld);
+        }
+
+        public static RelationManager GetRelationWithSelf(this EcsWorld self) => GetRelationWith(self, self);
+        public static RelationManager GetRelationWith(this EcsWorld self, EcsWorld otherWorld)
+        {
+            if (self == null || otherWorld == null)
+                throw new ArgumentNullException();
+            return WorldRelationsMatrix.Get(self, otherWorld);
         }
     }
 }

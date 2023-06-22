@@ -1,11 +1,10 @@
-﻿using DCFApixels.DragonECS;
-using DCFApixels.DragonECS.Relations.Utils;
+﻿using DCFApixels.DragonECS.Relations.Utils;
 
-namespace DragonECS.DragonECS
+namespace DCFApixels.DragonECS
 {
     internal static class WorldRelationsMatrix
     {
-        private static SparseArray64<RelationManager> _matrix;
+        private static SparseArray64<RelationManager> _matrix = new SparseArray64<RelationManager>(4);
 
         internal static RelationManager Register(EcsWorld world, EcsWorld otherWorld, EcsRelationWorld relationWorld)
         {
@@ -30,7 +29,7 @@ namespace DragonECS.DragonECS
         internal static RelationManager Get(EcsWorld world, EcsWorld otherWorld)
         {
 #if DEBUG
-            if (_matrix.Contains(world.id, otherWorld.id))
+            if (!_matrix.Contains(world.id, otherWorld.id))
                 throw new EcsFrameworkException();
 #endif
             return _matrix[world.id, otherWorld.id];

@@ -1,4 +1,4 @@
-﻿namespace DragonECS.DragonECS
+﻿namespace DCFApixels.DragonECS
 {
     public readonly struct RelationTargets
     {
@@ -10,5 +10,6 @@
             this.entity = entity;
             this.otherEntity = otherEntity;
         }
+        public override string ToString() => $"rel({entity}, {otherEntity})";
     }
 }
