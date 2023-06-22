@@ -120,12 +120,12 @@ namespace DragonECS.DragonECS
 
             #region Has
             public bool HasRelation(int entityID, int otherEntityID) => _source._relationsMatrix.Contains(entityID, otherEntityID);
-            public bool HasRelationWith(EcsSubject subject, int entityID, int otherEntityID)
-            {
-                if (subject.World != _relationWorld)
-                    throw new ArgumentException();
-                return _source._relationsMatrix.TryGetValue(entityID, otherEntityID, out int entity) && subject.IsMatches(entity);
-            }
+            //public bool HasRelationWith(EcsSubject subject, int entityID, int otherEntityID)
+            //{
+            //    if (subject.World != _relationWorld)
+            //        throw new ArgumentException();
+            //    return _source._relationsMatrix.TryGetValue(entityID, otherEntityID, out int entity) && subject.IsMatches(entity);
+            //}
             #endregion
 
             #region GetRelation
@@ -139,26 +139,31 @@ namespace DragonECS.DragonECS
             {
                 return _source._relationsMatrix.TryGetValue(entityID, otherEntityID, out entity);
             }
-            public bool TryGetRelation(EcsSubject subject, int entityID, int otherEntityID, out int entity)
-            {
-                return _source._relationsMatrix.TryGetValue(entityID, otherEntityID, out entity) && subject.IsMatches(entity);
-            }
+            //public bool TryGetRelation(EcsSubject subject, int entityID, int otherEntityID, out int entity)
+            //{
+            //    return _source._relationsMatrix.TryGetValue(entityID, otherEntityID, out entity) && subject.IsMatches(entity);
+            //}
             #endregion
 
             #region GetRelations
-            //ReadOnlySpan<int> временная заглушка, потому тут будет спан из линкедлиста
-            public ReadOnlySpan<int> GetRelations(int entityID)
+            public IdsLinkedList.Span GetRelations(int entityID)
             {
-                throw new NotImplementedException();
+                return _basket.GetSpanFor(entityID);
             }
             //ReadOnlySpan<int> временная заглушка, потому тут будет спан из линкедлиста
-            public ReadOnlySpan<int> GetRelationsWith(EcsSubject subject, int entityID)
-            {
-                if (subject.World != _relationWorld)
-                    throw new ArgumentException();
-                throw new NotImplementedException();
-            }
+            //public ReadOnlySpan<int> GetRelationsWith(EcsSubject subject, int entityID)
+            //{
+            //    if (subject.World != _relationWorld)
+            //        throw new ArgumentException();
+            //    throw new NotImplementedException();
+            //}
             #endregion
+        }
+
+        public struct RelationsSpan
+        {
+            private readonly IdsBasket _basket;
+            private readonly EcsSubject _subject;
         }
         #endregion
     }
