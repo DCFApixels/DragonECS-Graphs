@@ -157,7 +157,7 @@ namespace DCFApixels.DragonECS
             public bool HasRelation(int entityID, int otherEntityID) => _source.HasRelation(entityID, otherEntityID);
             public int GetRelation(int entityID, int otherEntityID) => _source.GetRelation(entityID, otherEntityID);
             public bool TryGetRelation(int entityID, int otherEntityID, out int relationEntityID) => _source.TryGetRelation(entityID, otherEntityID, out relationEntityID);
-            public IdsLinkedList.Span GetRelations(int relationEntityID) => _source._basket.GetSpanFor(relationEntityID);
+            public IdsLinkedList.Span GetRelations(int entityID) => _source._basket.GetSpanFor(entityID);
         }
         public readonly struct ReverseOrientation
         {
@@ -168,7 +168,7 @@ namespace DCFApixels.DragonECS
             public bool HasRelation(int otherEntityID, int entityID) => _source.HasRelation(entityID, otherEntityID);
             public int GetRelation(int otherEntityID, int entityID) => _source.GetRelation(entityID, otherEntityID);
             public bool TryGetRelation(int otherEntityID, int entityID, out int relationEntityID) => _source.TryGetRelation(entityID, otherEntityID, out relationEntityID);
-            public IdsLinkedList.Span GetRelations(int relationEntityID) => _source._otherBasket.GetSpanFor(relationEntityID);
+            public IdsLinkedList.Span GetRelations(int otherEntityID) => _source._otherBasket.GetSpanFor(otherEntityID);
         }
 
         public struct RelationsSpan
