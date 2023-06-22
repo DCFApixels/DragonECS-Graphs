@@ -169,7 +169,7 @@ namespace DCFApixels.DragonECS
         public struct RelationsSpan
         {
             private readonly IdsBasket _basket;
-            private readonly EcsSubject _subject;
+            private readonly EcsAspect _aspect;
         }
         #endregion
     }
