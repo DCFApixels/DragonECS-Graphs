@@ -1,7 +1,4 @@
-﻿using System;
-using System.Runtime.InteropServices;
-
-namespace DCFApixels.DragonECS.Relations.Utils
+﻿namespace DCFApixels.DragonECS.Relations.Utils
 {
     internal static class ArrayUtility
     {

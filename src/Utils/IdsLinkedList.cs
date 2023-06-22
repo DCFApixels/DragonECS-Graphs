@@ -53,7 +53,7 @@ namespace DCFApixels.DragonECS.Relations.Utils
         /// <returns> new node index</returns>
         public int InsertAfter(int nodeIndex, int value)
         {
-            if(++_count >= _nodes.Length)
+            if (++_count >= _nodes.Length)
                 Array.Resize(ref _nodes, _nodes.Length << 1);
             int newNodeIndex = _recycledNodesCount > 0 ? _recycledNodes[--_recycledNodesCount] : _count;
 
@@ -67,7 +67,7 @@ namespace DCFApixels.DragonECS.Relations.Utils
 
             return newNodeIndex;
         }
-        public int InsertBefore(int nodeIndex, int value) 
+        public int InsertBefore(int nodeIndex, int value)
         {
             if (++_count >= _nodes.Length)
                 Array.Resize(ref _nodes, _nodes.Length << 1);
@@ -83,7 +83,7 @@ namespace DCFApixels.DragonECS.Relations.Utils
         }
         public void Remove(int nodeIndex)
         {
-            if(nodeIndex <= 0)
+            if (nodeIndex <= 0)
                 throw new ArgumentOutOfRangeException();
 
             ref var node = ref _nodes[nodeIndex];
