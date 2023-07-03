@@ -25,12 +25,16 @@ namespace DCFApixels.DragonECS.Relations.Utils
         private int _modBitMask;
 
         #region Properties
+        public TValue this[int keyX, int keyY]
+        {
+            get => _entries[FindEntry((keyX << 32) | keyY)].value;
+            set => Insert(keyX + (keyY << 32), value);
+        }
         public TValue this[int key]
         {
             get => _entries[FindEntry(key)].value;
             set => Insert(key, value);
         }
-
         public int Count => _count;
         #endregion
 
@@ -46,7 +50,9 @@ namespace DCFApixels.DragonECS.Relations.Utils
         }
         #endregion
 
-        #region Add
+        #region Add/Contains/Remove
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Add(int keyX, int keyY, TValue value) => Add((keyX << 32) | keyY, value);
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Add(int key, TValue value)
         {
@@ -56,9 +62,41 @@ namespace DCFApixels.DragonECS.Relations.Utils
 #endif
             Insert(key, value);
         }
+
+        public bool Contains(int keyX, int keyY) => FindEntry((keyX << 32) | keyY) >= 0;
+        public bool Contains(int key) => FindEntry(key) >= 0;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool Remove(int keyX, int keyY) => Remove((keyX << 32) | keyY);
+        public bool Remove(int key)
+        {
+            int bucket = key & _modBitMask;
+            int last = -1;
+            for (int i = _buckets[bucket]; i >= 0; last = i, i = _entries[i].next)
+            {
+                if (_entries[i].hashKey == key)
+                {
+                    if (last < 0)
+                    {
+                        _buckets[bucket] = _entries[i].next;
+                    }
+                    else
+                    {
+                        _entries[last].next = _entries[i].next;
+                    }
+                    _entries[i].next = _freeList;
+                    _entries[i].hashKey = -1;
+                    _entries[i].value = default;
+                    _freeList = i;
+                    _freeCount++;
+                    return true;
+                }
+            }
+            return false;
+        }
         #endregion
 
-        #region Find/Insert/Remove
+        #region Find/Insert
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private int FindEntry(int key)
         {
@@ -101,32 +139,6 @@ namespace DCFApixels.DragonECS.Relations.Utils
             _entries[index].value = value;
             _buckets[targetBucket] = index;
         }
-        public bool Remove(int key)
-        {
-            int bucket = key & _modBitMask;
-            int last = -1;
-            for (int i = _buckets[bucket]; i >= 0; last = i, i = _entries[i].next)
-            {
-                if (_entries[i].hashKey == key)
-                {
-                    if (last < 0)
-                    {
-                        _buckets[bucket] = _entries[i].next;
-                    }
-                    else
-                    {
-                        _entries[last].next = _entries[i].next;
-                    }
-                    _entries[i].next = _freeList;
-                    _entries[i].hashKey = -1;
-                    _entries[i].value = default;
-                    _freeList = i;
-                    _freeCount++;
-                    return true;
-                }
-            }
-            return false;
-        }
         #endregion
 
         #region TryGetValue
@@ -140,13 +152,6 @@ namespace DCFApixels.DragonECS.Relations.Utils
             }
             value = _entries[index].value;
             return true;
-        }
-        #endregion
-
-        #region Contains
-        public bool Contains(int key)
-        {
-            return FindEntry(key) >= 0;
         }
         #endregion
 
