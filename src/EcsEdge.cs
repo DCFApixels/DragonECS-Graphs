@@ -147,7 +147,7 @@ namespace DCFApixels.DragonECS
         {
             ref RelationTargets rel = ref _relationTargets[entityID];
             if (_relationsMatrix.Contains(rel.entity, rel.otherEntity))
-                Forward.DelRelation(rel.entity, rel.otherEntity);
+                Forward.Del(rel.entity, rel.otherEntity);
         }
         #endregion
 
@@ -156,27 +156,27 @@ namespace DCFApixels.DragonECS
         {
             private readonly EcsEdge _source;
             internal ForwardOrientation(EcsEdge source) => _source = source;
-            public int NewRelation(int entityID, int otherEntityID) => _source.NewRelation(entityID, otherEntityID);
-            public void BindRelation(int relationEntityID, int entityID, int otherEntityID) => _source.BindRelation(relationEntityID, entityID, otherEntityID);
-            public bool HasRelation(int entityID, int otherEntityID) => _source.HasRelation(entityID, otherEntityID);
-            public int GetRelation(int entityID, int otherEntityID) => _source.GetRelation(entityID, otherEntityID);
-            public bool TryGetRelation(int entityID, int otherEntityID, out int relationEntityID) => _source.TryGetRelation(entityID, otherEntityID, out relationEntityID);
-            public IdsLinkedList.Span GetRelations(int entityID) => _source._basket.GetSpanFor(entityID);
-            public IdsLinkedList.LongSpan GetLongRelations(int entityID) => _source._basket.GetLongSpanFor(_source._world, entityID);
-            public void DelRelation(int entityID, int otherEntityID) => _source.DelRelation(entityID, otherEntityID);
+            public int New(int entityID, int otherEntityID) => _source.NewRelation(entityID, otherEntityID);
+            public void Bind(int relationEntityID, int entityID, int otherEntityID) => _source.BindRelation(relationEntityID, entityID, otherEntityID);
+            public bool Has(int entityID, int otherEntityID) => _source.HasRelation(entityID, otherEntityID);
+            public int Get(int entityID, int otherEntityID) => _source.GetRelation(entityID, otherEntityID);
+            public bool TryGet(int entityID, int otherEntityID, out int relationEntityID) => _source.TryGetRelation(entityID, otherEntityID, out relationEntityID);
+            public IdsLinkedList.Span Get(int entityID) => _source._basket.GetSpanFor(entityID);
+            public IdsLinkedList.LongSpan GetLongs(int entityID) => _source._basket.GetLongSpanFor(_source._world, entityID);
+            public void Del(int entityID, int otherEntityID) => _source.DelRelation(entityID, otherEntityID);
         }
         public readonly struct ReverseOrientation
         {
             private readonly EcsEdge _source;
             internal ReverseOrientation(EcsEdge source) => _source = source;
-            public int NewRelation(int otherEntityID, int entityID) => _source.NewRelation(entityID, otherEntityID);
-            public void BindRelation(int relationEntityID, int entityID, int otherEntityID) => _source.BindRelation(relationEntityID, otherEntityID, entityID);
-            public bool HasRelation(int otherEntityID, int entityID) => _source.HasRelation(entityID, otherEntityID);
-            public int GetRelation(int otherEntityID, int entityID) => _source.GetRelation(entityID, otherEntityID);
-            public bool TryGetRelation(int otherEntityID, int entityID, out int relationEntityID) => _source.TryGetRelation(entityID, otherEntityID, out relationEntityID);
-            public IdsLinkedList.Span GetRelations(int otherEntityID) => _source._otherBasket.GetSpanFor(otherEntityID);
-            public IdsLinkedList.LongSpan GetLongRelations(int otherEntityID) => _source._otherBasket.GetLongSpanFor(_source._otherWorld, otherEntityID);
-            public void DelRelation(int otherEntityID, int entityID) => _source.DelRelation(entityID, otherEntityID);
+            public int New(int otherEntityID, int entityID) => _source.NewRelation(entityID, otherEntityID);
+            public void Bind(int relationEntityID, int entityID, int otherEntityID) => _source.BindRelation(relationEntityID, otherEntityID, entityID);
+            public bool Has(int otherEntityID, int entityID) => _source.HasRelation(entityID, otherEntityID);
+            public int Get(int otherEntityID, int entityID) => _source.GetRelation(entityID, otherEntityID);
+            public bool TryGet(int otherEntityID, int entityID, out int relationEntityID) => _source.TryGetRelation(entityID, otherEntityID, out relationEntityID);
+            public IdsLinkedList.Span Get(int otherEntityID) => _source._otherBasket.GetSpanFor(otherEntityID);
+            public IdsLinkedList.LongSpan GetLongs(int otherEntityID) => _source._otherBasket.GetLongSpanFor(_source._otherWorld, otherEntityID);
+            public void Del(int otherEntityID, int entityID) => _source.DelRelation(entityID, otherEntityID);
         }
 
         //public readonly ref struct FilterIterator 
