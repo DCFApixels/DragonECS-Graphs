@@ -1,5 +1,7 @@
 ﻿using DCFApixels.DragonECS.Relations.Utils;
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
 namespace DCFApixels.DragonECS
@@ -158,9 +160,10 @@ namespace DCFApixels.DragonECS
             public void BindRelation(int relationEntityID, int entityID, int otherEntityID) => _source.BindRelation(relationEntityID, entityID, otherEntityID);
             public bool HasRelation(int entityID, int otherEntityID) => _source.HasRelation(entityID, otherEntityID);
             public int GetRelation(int entityID, int otherEntityID) => _source.GetRelation(entityID, otherEntityID);
-            public void DelRelation(int entityID, int otherEntityID) => _source.DelRelation(entityID, otherEntityID);
             public bool TryGetRelation(int entityID, int otherEntityID, out int relationEntityID) => _source.TryGetRelation(entityID, otherEntityID, out relationEntityID);
             public IdsLinkedList.Span GetRelations(int entityID) => _source._basket.GetSpanFor(entityID);
+            public IdsLinkedList.LongSpan GetLongRelations(int entityID) => _source._basket.GetLongSpanFor(_source._world, entityID);
+            public void DelRelation(int entityID, int otherEntityID) => _source.DelRelation(entityID, otherEntityID);
         }
         public readonly struct ReverseOrientation
         {
@@ -170,16 +173,43 @@ namespace DCFApixels.DragonECS
             public void BindRelation(int relationEntityID, int entityID, int otherEntityID) => _source.BindRelation(relationEntityID, otherEntityID, entityID);
             public bool HasRelation(int otherEntityID, int entityID) => _source.HasRelation(entityID, otherEntityID);
             public int GetRelation(int otherEntityID, int entityID) => _source.GetRelation(entityID, otherEntityID);
-            public void DelRelation(int otherEntityID, int entityID) => _source.DelRelation(entityID, otherEntityID);
             public bool TryGetRelation(int otherEntityID, int entityID, out int relationEntityID) => _source.TryGetRelation(entityID, otherEntityID, out relationEntityID);
             public IdsLinkedList.Span GetRelations(int otherEntityID) => _source._otherBasket.GetSpanFor(otherEntityID);
+            public IdsLinkedList.LongSpan GetLongRelations(int otherEntityID) => _source._otherBasket.GetLongSpanFor(_source._otherWorld, otherEntityID);
+            public void DelRelation(int otherEntityID, int entityID) => _source.DelRelation(entityID, otherEntityID);
         }
 
-        public struct RelationsSpan
-        {
-            private readonly IdsBasket _basket;
-            private readonly EcsAspect _aspect;
-        }
+        //public readonly ref struct FilterIterator 
+        //{
+        //    private readonly IdsLinkedList.Span _listSpan;
+        //    private readonly EcsMask _mask;
+        //    public FilterIterator(EcsWorld world, IdsLinkedList.Span listSpan, EcsMask mask)
+        //    {
+        //        _listSpan = listSpan;
+        //        _mask = mask;
+        //    }
+        //    public Enumerator GetEnumerator() => new Enumerator(_listSpan, _mask);
+        //    public ref struct Enumerator
+        //    {
+        //        private readonly IdsLinkedList.SpanEnumerator _listEnumerator;
+        //        private readonly EcsMask _mask;
+        //        public Enumerator(IdsLinkedList.Span listSpan, EcsMask mask)
+        //        {
+        //            _listEnumerator = listSpan.GetEnumerator();
+        //            _mask = mask;
+        //        }
+        //        public int Current => _listEnumerator.Current;
+        //        public bool MoveNext()
+        //        {
+        //            while (_listEnumerator.MoveNext())
+        //            {
+        //                int e = _listEnumerator.Current;
+        //                ...
+        //            }
+        //            return false;
+        //        }
+        //    }
+        //}
         #endregion
     }
 }

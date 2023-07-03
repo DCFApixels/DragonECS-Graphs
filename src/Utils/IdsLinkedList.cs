@@ -130,16 +130,107 @@ namespace DCFApixels.DragonECS.Relations.Utils
         public int Add(int id) => InsertAfter(_lastNodeIndex, id);
         public ref readonly Node GetNode(int nodeIndex) => ref _nodes[nodeIndex];
 
+        #region Span/Enumerator
+        IEnumerator<int> IEnumerable<int>.GetEnumerator() => GetEnumerator();
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
         public SpanEnumerator GetEnumerator() => new SpanEnumerator(_nodes, _nodes[Head].next, _count);
         public Span GetSpan(int startNodeIndex, int count) => new Span(this, startNodeIndex, count);
         public Span EmptySpan() => new Span(this, 0, 0);
 
-        #region IEnumerable
-        IEnumerator<int> IEnumerable<int>.GetEnumerator() => GetEnumerator();
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+        public LongSpan GetLongs(EcsWorld world) => new LongSpan(world, this, _nodes[Head].next, _count);
+        public LongSpan GetLongSpan(EcsWorld world, int startNodeIndex, int count) => new LongSpan(world, this, startNodeIndex, count);
+        public LongSpan EmptyLongSpan(EcsWorld world) => new LongSpan(world, this, 0, 0);
+
+        public readonly ref struct Span
+        {
+            private readonly IdsLinkedList _source;
+            private readonly int _startNodeIndex;
+            private readonly int _count;
+            public Span(IdsLinkedList source, int startNodeIndex, int count)
+            {
+                _source = source;
+                _startNodeIndex = startNodeIndex;
+                _count = count;
+            }
+            public SpanEnumerator GetEnumerator() => new SpanEnumerator(_source._nodes, _startNodeIndex, _count);
+        }
+        public struct SpanEnumerator : IEnumerator<int>
+        {
+            private readonly Node[] _nodes;
+            private int _count;
+            private int _index;
+            private int _next;
+            public SpanEnumerator(Node[] nodes, int startIndex, int count)
+            {
+                _nodes = nodes;
+                _index = -1;
+                _count = count;
+                _next = startIndex;
+            }
+            public int Current => _nodes[_index].value;
+            object IEnumerator.Current => Current;
+            public bool MoveNext()
+            {
+                _index = _next;
+                _next = _nodes[_next].next;
+                return _index > 0 && _count-- > 0;
+            }
+            void IDisposable.Dispose() { }
+            void IEnumerator.Reset()
+            {
+                _index = -1;
+                _next = Head;
+            }
+        }
+        public readonly ref struct LongSpan
+        {
+            private readonly EcsWorld _world;
+            private readonly IdsLinkedList _source;
+            private readonly int _startNodeIndex;
+            private readonly int _count;
+            public LongSpan(EcsWorld world, IdsLinkedList source, int startNodeIndex, int count)
+            {
+                _world = world;
+                _source = source;
+                _startNodeIndex = startNodeIndex;
+                _count = count;
+            }
+            public LongSpanEnumerator GetEnumerator() => new LongSpanEnumerator(_world, _source._nodes, _startNodeIndex, _count);
+        }
+        public struct LongSpanEnumerator : IEnumerator<entlong>
+        {
+            private EcsWorld _world;
+            private readonly Node[] _nodes;
+            private int _count;
+            private int _index;
+            private int _next;
+            public LongSpanEnumerator(EcsWorld world, Node[] nodes, int startIndex, int count)
+            {
+                _world = world;
+                _nodes = nodes;
+                _index = -1;
+                _count = count;
+                _next = startIndex;
+            }
+            public entlong Current => _world.GetEntityLong(_nodes[_index].value);
+            object IEnumerator.Current => Current;
+            public bool MoveNext()
+            {
+                _index = _next;
+                _next = _nodes[_next].next;
+                return _index > 0 && _count-- > 0;
+            }
+            void IDisposable.Dispose() { }
+            void IEnumerator.Reset()
+            {
+                _index = -1;
+                _next = Head;
+            }
+        }
         #endregion
 
-        #region Utils Node/Enumerator/Span
+        #region Node
         [StructLayout(LayoutKind.Sequential, Pack = 4, Size = 8)]
         public struct Node
         {
@@ -157,52 +248,6 @@ namespace DCFApixels.DragonECS.Relations.Utils
             }
             public override string ToString() => $"node({prev}<>{next} v:{value})";
         }
-
-        #region Span/Enumerator
-        public readonly ref struct Span
-        {
-            private readonly IdsLinkedList _source;
-            private readonly int _startNodeIndex;
-            private readonly int _count;
-            public Span(IdsLinkedList source, int startNodeIndex, int count)
-            {
-                _source = source;
-                _startNodeIndex = startNodeIndex;
-                _count = count;
-            }
-            public SpanEnumerator GetEnumerator() => new SpanEnumerator(_source._nodes, _startNodeIndex, _count);
-        }
-        public struct SpanEnumerator : IEnumerator<int>
-        {
-            private readonly Node[] _nodes;
-            private int _index;
-            private int _count;
-            private int _next;
-            public SpanEnumerator(Node[] nodes, int startIndex, int count)
-            {
-                _nodes = nodes;
-                _index = -1;
-                _count = count;
-                _next = startIndex;
-            }
-            public int Current => _nodes[_index].value;
-            public bool MoveNext()
-            {
-                _index = _next;
-                _next = _nodes[_next].next;
-                return _index > 0 && _count-- > 0;
-            }
-
-            object IEnumerator.Current => Current;
-            void IDisposable.Dispose() { }
-            void IEnumerator.Reset()
-            {
-                _index = -1;
-                _next = Head;
-            }
-        }
-        #endregion
-
         #endregion
 
         #region Debug

@@ -17,6 +17,7 @@ namespace DCFApixels.DragonECS
 #endif
             EcsEdge edge = new EcsEdge(world, otherWorld, edgeWorld);
             _matrix[worldID, otherWorldID] = edge;
+            _matrix[otherWorldID, worldID] = edge;
             return edge;
         }
         internal static void Unregister(EcsWorld world, EcsWorld otherWorld)
@@ -25,6 +26,7 @@ namespace DCFApixels.DragonECS
             int otherWorldID = otherWorld.id;
             //var manager = _matrix[worldID, otherWorldID];
             _matrix.Remove(worldID, otherWorldID);
+            _matrix.Remove(otherWorldID, worldID);
         }
 
         internal static EcsEdge Get(EcsWorld world, EcsWorld otherWorld)
@@ -64,8 +66,8 @@ namespace DCFApixels.DragonECS
             WorldGraph.HasEdge(self, otherWorld);
         }
 
-        public static EcsEdge GetEdgeWithSelf(this EcsWorld self) => GetRelationWith(self, self);
-        public static EcsEdge GetRelationWith(this EcsWorld self, EcsWorld otherWorld)
+        public static EcsEdge GetEdgeWithSelf(this EcsWorld self) => GetEdgeWith(self, self);
+        public static EcsEdge GetEdgeWith(this EcsWorld self, EcsWorld otherWorld)
         {
             if (self == null || otherWorld == null)
                 throw new ArgumentNullException();

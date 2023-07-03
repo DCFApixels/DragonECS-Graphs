@@ -1,11 +1,10 @@
-﻿using DCFApixels.DragonECS.Relations.Utils;
-using System;
+﻿using System;
 using System.Diagnostics;
 
-namespace DCFApixels.DragonECS
+namespace DCFApixels.DragonECS.Relations.Utils
 {
     [DebuggerTypeProxy(typeof(DebuggerProxy))]
-    public class IdsBasket
+    internal class IdsBasket
     {
         private IdsLinkedList _headList = new IdsLinkedList(4);
         private IdsLinkedList _valueList = new IdsLinkedList(4);
@@ -82,6 +81,14 @@ namespace DCFApixels.DragonECS
                 return _headList.EmptySpan();
             else
                 return _headList.GetSpan(head.startNodeIndex, head.count);
+        }
+        public IdsLinkedList.LongSpan GetLongSpanFor(EcsWorld world, int value)
+        {
+            ref var head = ref _headMapping[value];
+            if (head.startNodeIndex <= 0)
+                return _headList.EmptyLongSpan(world);
+            else
+                return _headList.GetLongSpan(world, head.startNodeIndex, head.count);
         }
 
         private struct SpanInfo
