@@ -1,14 +1,11 @@
 ﻿using DCFApixels.DragonECS.Relations.Utils;
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
 namespace DCFApixels.DragonECS
 {
     //Edge world
     //Relation entity
-    //Relation
     //Relation component
     public class EcsEdge : IEcsWorldEventListener, IEcsEntityEventListener
     {
