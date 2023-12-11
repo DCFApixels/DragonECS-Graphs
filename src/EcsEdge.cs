@@ -26,15 +26,15 @@ namespace DCFApixels.DragonECS
         public EcsWorld OtherWorld => _otherWorld;
         public EcsEdgeWorld EdgeWorld => _edgeWorld;
 
-        public bool IsSolo => _world == _otherWorld;
+        public bool IsLoop => _world == _otherWorld;
 
-        internal EcsEdge(EcsWorld world, EcsWorld otherWorld, EcsEdgeWorld relationWorld)
+        internal EcsEdge(EcsWorld world, EcsWorld otherWorld, EcsEdgeWorld edgeWorld)
         {
-            _edgeWorld = relationWorld;
+            _edgeWorld = edgeWorld;
             _world = world;
             _otherWorld = otherWorld;
 
-            _relationTargets = new RelationTargets[relationWorld.Capacity];
+            _relationTargets = new RelationTargets[edgeWorld.Capacity];
 
             _edgeWorld.AddListener(worldEventListener: this);
             _edgeWorld.AddListener(entityEventListener: this);
@@ -44,9 +44,9 @@ namespace DCFApixels.DragonECS
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ref readonly RelationTargets GetRelationTargets(int relationEntityID)
+        public ref readonly RelationTargets GetRelationTargets(int arcEntityID)
         {
-            return ref _relationTargets[relationEntityID];
+            return ref _relationTargets[arcEntityID];
         }
 
         #region Methods
@@ -149,30 +149,48 @@ namespace DCFApixels.DragonECS
         #endregion
 
         #region Orientation
-        public readonly struct ForwardOrientation
+        public readonly struct ForwardOrientation : IEcsEdgeOrientation
         {
             private readonly EcsEdge _source;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             internal ForwardOrientation(EcsEdge source) => _source = source;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public int New(int entityID, int otherEntityID) => _source.NewRelation(entityID, otherEntityID);
-            public void Bind(int relationEntityID, int entityID, int otherEntityID) => _source.BindRelation(relationEntityID, entityID, otherEntityID);
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void Bind(int arcEntityID, int entityID, int otherEntityID) => _source.BindRelation(arcEntityID, entityID, otherEntityID);
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool Has(int entityID, int otherEntityID) => _source.HasRelation(entityID, otherEntityID);
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public int Get(int entityID, int otherEntityID) => _source.GetRelation(entityID, otherEntityID);
-            public bool TryGet(int entityID, int otherEntityID, out int relationEntityID) => _source.TryGetRelation(entityID, otherEntityID, out relationEntityID);
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public bool TryGet(int entityID, int otherEntityID, out int arcEntityID) => _source.TryGetRelation(entityID, otherEntityID, out arcEntityID);
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public IdsLinkedList.Span Get(int entityID) => _source._basket.GetSpanFor(entityID);
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public IdsLinkedList.LongSpan GetLongs(int entityID) => _source._basket.GetLongSpanFor(_source._world, entityID);
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Del(int entityID, int otherEntityID) => _source.DelRelation(entityID, otherEntityID);
         }
-        public readonly struct ReverseOrientation
+        public readonly struct ReverseOrientation : IEcsEdgeOrientation
         {
             private readonly EcsEdge _source;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             internal ReverseOrientation(EcsEdge source) => _source = source;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public int New(int otherEntityID, int entityID) => _source.NewRelation(entityID, otherEntityID);
-            public void Bind(int relationEntityID, int entityID, int otherEntityID) => _source.BindRelation(relationEntityID, otherEntityID, entityID);
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void Bind(int arcEntityID, int entityID, int otherEntityID) => _source.BindRelation(arcEntityID, otherEntityID, entityID);
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool Has(int otherEntityID, int entityID) => _source.HasRelation(entityID, otherEntityID);
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public int Get(int otherEntityID, int entityID) => _source.GetRelation(entityID, otherEntityID);
-            public bool TryGet(int otherEntityID, int entityID, out int relationEntityID) => _source.TryGetRelation(entityID, otherEntityID, out relationEntityID);
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public bool TryGet(int otherEntityID, int entityID, out int arcEntityID) => _source.TryGetRelation(entityID, otherEntityID, out arcEntityID);
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public IdsLinkedList.Span Get(int otherEntityID) => _source._otherBasket.GetSpanFor(otherEntityID);
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public IdsLinkedList.LongSpan GetLongs(int otherEntityID) => _source._otherBasket.GetLongSpanFor(_source._otherWorld, otherEntityID);
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Del(int otherEntityID, int entityID) => _source.DelRelation(entityID, otherEntityID);
         }
 
@@ -208,5 +226,16 @@ namespace DCFApixels.DragonECS
         //    }
         //}
         #endregion
+    }
+    public interface IEcsEdgeOrientation
+    {
+        public int New(int entityID, int otherEntityID);
+        public void Bind(int arcEntityID, int entityID, int otherEntityID);
+        public bool Has(int entityID, int otherEntityID);
+        public int Get(int entityID, int otherEntityID);
+        public bool TryGet(int otherEntityID, int entityID, out int arcEntityID);
+        public IdsLinkedList.Span Get(int entityID);
+        public IdsLinkedList.LongSpan GetLongs(int entityID);
+        public void Del(int entityID, int otherEntityID);
     }
 }

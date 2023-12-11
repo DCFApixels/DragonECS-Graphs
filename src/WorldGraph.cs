@@ -1,11 +1,13 @@
-﻿using DCFApixels.DragonECS.Relations.Utils;
+﻿using DCFApixels.DragonECS.Relations.Internal;
+using DCFApixels.DragonECS.Relations.Utils;
+using Leopotam.EcsLite;
 using System;
 
-namespace DCFApixels.DragonECS
+namespace DCFApixels.DragonECS.Relations.Internal
 {
     internal static class WorldGraph
     {
-        private static SparseArray64<EcsEdge> _matrix = new SparseArray64<EcsEdge>(4);
+        private static readonly SparseArray64<EcsEdge> _matrix = new SparseArray64<EcsEdge>(4);
 
         internal static EcsEdge Register(EcsWorld world, EcsWorld otherWorld, EcsEdgeWorld edgeWorld)
         {
@@ -40,22 +42,25 @@ namespace DCFApixels.DragonECS
         internal static bool HasEdge(EcsWorld world, EcsWorld otherWorld) => HasEdge(world.id, otherWorld.id);
         internal static bool HasEdge(int worldID, int otherWorldID) => _matrix.Contains(worldID, otherWorldID);
     }
+}
 
+namespace DCFApixels.DragonECS
+{ 
     public static class WorldGraphExtensions
     {
-        public static void SetEdgeWithSelf(this EcsWorld self) => SetEdgeWith(self, self);
-        public static void SetEdgeWith(this EcsWorld self, EcsWorld otherWorld)
+        public static EcsEdge SetEdgeWithSelf(this EcsWorld self) => SetEdgeWith(self, self);
+        public static EcsEdge SetEdgeWith(this EcsWorld self, EcsWorld otherWorld)
         {
             if (self == null || otherWorld == null)
                 throw new ArgumentNullException();
-            WorldGraph.Register(self, otherWorld, new EcsEdgeWorld());
+            return WorldGraph.Register(self, otherWorld, new EcsEdgeWorld());
         }
-        public static void SetEdgeWithSelf(this EcsWorld self, EcsEdgeWorld relationWorld) => SetEdgeWith(self, self, relationWorld);
-        public static void SetEdgeWith(this EcsWorld self, EcsWorld otherWorld, EcsEdgeWorld edgeWorld)
+        public static EcsEdge SetEdgeWithSelf(this EcsWorld self, EcsEdgeWorld edgeWorld) => SetEdgeWith(self, self, edgeWorld);
+        public static EcsEdge SetEdgeWith(this EcsWorld self, EcsWorld otherWorld, EcsEdgeWorld edgeWorld)
         {
             if (self == null || otherWorld == null || edgeWorld == null)
                 throw new ArgumentNullException();
-            WorldGraph.Register(self, otherWorld, edgeWorld);
+            return WorldGraph.Register(self, otherWorld, edgeWorld);
         }
 
         public static void HasEdgeWithSelf(this EcsWorld self) => HasEdgeWith(self, self);
@@ -74,11 +79,12 @@ namespace DCFApixels.DragonECS
             return WorldGraph.Get(self, otherWorld);
         }
 
-        public static void DelEdgeWithSelf(this EcsWorld self) => DelEdgeWith(self, self);
-        public static void DelEdgeWith(this EcsWorld self, EcsWorld otherWorld)
+        public static void DestroyEdgeWithSelf(this EcsWorld self) => DestroyEdgeWith(self, self);
+        public static void DestroyEdgeWith(this EcsWorld self, EcsWorld otherWorld)
         {
             if (self == null || otherWorld == null)
                 throw new ArgumentNullException();
+            WorldGraph.Get(self, otherWorld).EdgeWorld.Destroy();
             WorldGraph.Unregister(self, otherWorld);
         }
     }
