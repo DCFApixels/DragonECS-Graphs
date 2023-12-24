@@ -1,5 +1,6 @@
 ﻿using DCFApixels.DragonECS.Relations.Utils;
 using System;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
 namespace DCFApixels.DragonECS
@@ -13,68 +14,87 @@ namespace DCFApixels.DragonECS
         private readonly EcsWorld _otherWorld;
         private readonly EcsEdgeWorld _edgeWorld;
 
+        private readonly VertexWorldHandler _worldHandler;
+        private readonly VertexWorldHandler _otherWorldHandler;
+
         private readonly IdsBasket _basket = new IdsBasket(256);
         private readonly IdsBasket _otherBasket = new IdsBasket(256);
         private readonly SparseArray64<int> _relationsMatrix = new SparseArray64<int>();
 
-        public readonly ForwardOrientation Forward;
-        public readonly ReverseOrientation Reverse;
+        private ArcTargets[] _arkTargets; //N * (N - 1) / 2
 
-        private RelationTargets[] _relationTargets;
+        private List<WeakReference<EcsJoinGroup>> _groups = new List<WeakReference<EcsJoinGroup>>();
+        private Stack<EcsJoinGroup> _groupsPool = new Stack<EcsJoinGroup>(64);
 
+        #region Properties
         public EcsWorld World => _world;
         public EcsWorld OtherWorld => _otherWorld;
         public EcsEdgeWorld EdgeWorld => _edgeWorld;
 
         public bool IsLoop => _world == _otherWorld;
+        #endregion
 
+        #region Constructors
         internal EcsEdge(EcsWorld world, EcsWorld otherWorld, EcsEdgeWorld edgeWorld)
         {
             _edgeWorld = edgeWorld;
             _world = world;
             _otherWorld = otherWorld;
 
-            _relationTargets = new RelationTargets[edgeWorld.Capacity];
+            _worldHandler = new VertexWorldHandler(this, _world, _basket);
+            _world.AddListener(_worldHandler);
+            if (IsLoop)
+            {
+                _otherWorldHandler = _worldHandler;
+            }
+            else
+            {
+                _otherWorldHandler = new VertexWorldHandler(this, _otherWorld, _otherBasket);
+                _world.AddListener(_otherWorldHandler);
+            }
+
+            _arkTargets = new ArcTargets[edgeWorld.Capacity];
 
             _edgeWorld.AddListener(worldEventListener: this);
             _edgeWorld.AddListener(entityEventListener: this);
-
-            Forward = new ForwardOrientation(this);
-            Reverse = new ReverseOrientation(this);
         }
+        #endregion
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ref readonly RelationTargets GetRelationTargets(int arcEntityID)
+        #region Join Groups Pool
+        internal void RegisterGroup(EcsJoinGroup group)
         {
-            return ref _relationTargets[arcEntityID];
+            _groups.Add(new WeakReference<EcsJoinGroup>(group));
         }
-
-        #region Methods
+        internal EcsJoinGroup GetFreeGroup()
+        {
+            EcsJoinGroup result = _groupsPool.Count <= 0 ? new EcsJoinGroup(this) : _groupsPool.Pop();
+            result._isReleased = false;
+            return result;
+        }
+        internal void ReleaseGroup(EcsJoinGroup group)
+        {
+#if (DEBUG && !DISABLE_DEBUG) || !DISABLE_DRAGONECS_ASSERT_CHEKS
+            if (group.Edge != this) throw new Exception();
+#endif
+            group._isReleased = true;
+            group.Clear();
+            _groupsPool.Push(group);
+        }
+        #endregion
 
         #region New/Del
-        private int NewRelation(int entityID, int otherEntityID)
+        public int New(int entityID, int otherEntityID)
         {
-
-            if (HasRelation(entityID, otherEntityID))
+            if (Has(entityID, otherEntityID))
                 throw new EcsRelationException();
-            int e = _edgeWorld.NewEmptyEntity();
+            int arcEntity = _edgeWorld.NewEntity();
             _basket.AddToHead(entityID, otherEntityID);
             _otherBasket.AddToHead(otherEntityID, entityID);
-            _relationsMatrix.Add(entityID, otherEntityID, e);
-            _relationTargets[e] = new RelationTargets(entityID, otherEntityID);
-            return e;
+            _relationsMatrix.Add(entityID, otherEntityID, arcEntity);
+            _arkTargets[arcEntity] = new ArcTargets(entityID, otherEntityID);
+            return arcEntity;
         }
-        private void BindRelation(int relationEntityID, int entityID, int otherEntityID)
-        {
-            ref var rel = ref _relationTargets[relationEntityID];
-            if (HasRelation(entityID, otherEntityID) || rel.IsEmpty)
-                throw new EcsRelationException();
-            _basket.AddToHead(entityID, otherEntityID);
-            _otherBasket.AddToHead(otherEntityID, entityID);
-            _relationsMatrix.Add(entityID, otherEntityID, relationEntityID);
-            rel = new RelationTargets(entityID, otherEntityID);
-        }
-        private void DelRelation(int entityID, int otherEntityID)
+        public void Del(int entityID, int otherEntityID)
         {
             if (!_relationsMatrix.TryGetValue(entityID, otherEntityID, out int e))
                 throw new EcsRelationException();
@@ -82,28 +102,25 @@ namespace DCFApixels.DragonECS
             _basket.DelHead(entityID);
             _otherBasket.Del(entityID);
             _edgeWorld.DelEntity(e);
-            _relationTargets[e] = RelationTargets.Empty;
+            _arkTargets[e] = ArcTargets.Empty;
         }
         #endregion
 
-        #region Has
-        private bool HasRelation(int entityID, int otherEntityID) => _relationsMatrix.Contains(entityID, otherEntityID);
+        #region Get/Has
+        public bool Has(int entityID, int otherEntityID) => _relationsMatrix.Contains(entityID, otherEntityID);
         //public bool HasRelationWith(EcsSubject subject, int entityID, int otherEntityID)
         //{
         //    if (subject.World != _relationWorld)
         //        throw new ArgumentException();
         //    return _source._relationsMatrix.TryGetValue(entityID, otherEntityID, out int entity) && subject.IsMatches(entity);
         //}
-        #endregion
-
-        #region GetRelation
-        private int GetRelation(int entityID, int otherEntityID)
+        public int Get(int entityID, int otherEntityID)
         {
             if (!_relationsMatrix.TryGetValue(entityID, otherEntityID, out int e))
                 throw new EcsRelationException();
             return e;
         }
-        private bool TryGetRelation(int entityID, int otherEntityID, out int entity)
+        private bool TryGet(int entityID, int otherEntityID, out int entity)
         {
             return _relationsMatrix.TryGetValue(entityID, otherEntityID, out entity);
         }
@@ -111,9 +128,7 @@ namespace DCFApixels.DragonECS
         //{
         //    return _source._relationsMatrix.TryGetValue(entityID, otherEntityID, out entity) && subject.IsMatches(entity);
         //}
-        #endregion
 
-        #region GetRelations
         //#region GetRelations
         //private IdsLinkedList.Span GetRelations(int entityID)
         //{
@@ -129,12 +144,31 @@ namespace DCFApixels.DragonECS
         //#endregion
         #endregion
 
+        #region Other
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool IsArc(int arcEntityID)
+        {
+            if (arcEntityID <= 0 || arcEntityID >= _arkTargets.Length)
+                return false;
+            return !_arkTargets[arcEntityID].IsEmpty;
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ArcTargets GetArcTargets(int arcEntityID)
+        {
+            if (arcEntityID <= 0 || arcEntityID >= _arkTargets.Length)
+                throw new Exception();
+            return _arkTargets[arcEntityID];
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public IdsLinkedList.Span Get(int entityID) => _basket.GetSpanFor(entityID);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public IdsLinkedList.LongSpan GetLongs(int entityID) => _basket.GetLongSpanFor(_world, entityID);
         #endregion
 
         #region Callbacks
         void IEcsWorldEventListener.OnWorldResize(int newSize)
         {
-            Array.Resize(ref _relationTargets, newSize);
+            Array.Resize(ref _arkTargets, newSize);
         }
         void IEcsWorldEventListener.OnReleaseDelEntityBuffer(ReadOnlySpan<int> buffer) { }
         void IEcsWorldEventListener.OnWorldDestroy() { }
@@ -142,100 +176,38 @@ namespace DCFApixels.DragonECS
         void IEcsEntityEventListener.OnNewEntity(int entityID) { }
         void IEcsEntityEventListener.OnDelEntity(int entityID)
         {
-            ref RelationTargets rel = ref _relationTargets[entityID];
-            if (_relationsMatrix.Contains(rel.entity, rel.otherEntity))
-                Forward.Del(rel.entity, rel.otherEntity);
+            ref ArcTargets rel = ref _arkTargets[entityID];
+            if (_relationsMatrix.Contains(rel.start, rel.end))
+                Del(rel.start, rel.end);
         }
         #endregion
 
-        #region Orientation
-        public readonly struct ForwardOrientation : IEcsEdgeOrientation
+        #region VertexWorldHandler
+        private class VertexWorldHandler : IEcsEntityEventListener
         {
             private readonly EcsEdge _source;
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            internal ForwardOrientation(EcsEdge source) => _source = source;
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public int New(int entityID, int otherEntityID) => _source.NewRelation(entityID, otherEntityID);
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void Bind(int arcEntityID, int entityID, int otherEntityID) => _source.BindRelation(arcEntityID, entityID, otherEntityID);
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public bool Has(int entityID, int otherEntityID) => _source.HasRelation(entityID, otherEntityID);
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public int Get(int entityID, int otherEntityID) => _source.GetRelation(entityID, otherEntityID);
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public bool TryGet(int entityID, int otherEntityID, out int arcEntityID) => _source.TryGetRelation(entityID, otherEntityID, out arcEntityID);
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public IdsLinkedList.Span Get(int entityID) => _source._basket.GetSpanFor(entityID);
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public IdsLinkedList.LongSpan GetLongs(int entityID) => _source._basket.GetLongSpanFor(_source._world, entityID);
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void Del(int entityID, int otherEntityID) => _source.DelRelation(entityID, otherEntityID);
-        }
-        public readonly struct ReverseOrientation : IEcsEdgeOrientation
-        {
-            private readonly EcsEdge _source;
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            internal ReverseOrientation(EcsEdge source) => _source = source;
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public int New(int otherEntityID, int entityID) => _source.NewRelation(entityID, otherEntityID);
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void Bind(int arcEntityID, int entityID, int otherEntityID) => _source.BindRelation(arcEntityID, otherEntityID, entityID);
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public bool Has(int otherEntityID, int entityID) => _source.HasRelation(entityID, otherEntityID);
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public int Get(int otherEntityID, int entityID) => _source.GetRelation(entityID, otherEntityID);
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public bool TryGet(int otherEntityID, int entityID, out int arcEntityID) => _source.TryGetRelation(entityID, otherEntityID, out arcEntityID);
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public IdsLinkedList.Span Get(int otherEntityID) => _source._otherBasket.GetSpanFor(otherEntityID);
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public IdsLinkedList.LongSpan GetLongs(int otherEntityID) => _source._otherBasket.GetLongSpanFor(_source._otherWorld, otherEntityID);
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void Del(int otherEntityID, int entityID) => _source.DelRelation(entityID, otherEntityID);
-        }
+            private readonly EcsWorld _world;
+            private readonly IdsBasket _basket;
 
-        //public readonly ref struct FilterIterator 
-        //{
-        //    private readonly IdsLinkedList.Span _listSpan;
-        //    private readonly EcsMask _mask;
-        //    public FilterIterator(EcsWorld world, IdsLinkedList.Span listSpan, EcsMask mask)
-        //    {
-        //        _listSpan = listSpan;
-        //        _mask = mask;
-        //    }
-        //    public Enumerator GetEnumerator() => new Enumerator(_listSpan, _mask);
-        //    public ref struct Enumerator
-        //    {
-        //        private readonly IdsLinkedList.SpanEnumerator _listEnumerator;
-        //        private readonly EcsMask _mask;
-        //        public Enumerator(IdsLinkedList.Span listSpan, EcsMask mask)
-        //        {
-        //            _listEnumerator = listSpan.GetEnumerator();
-        //            _mask = mask;
-        //        }
-        //        public int Current => _listEnumerator.Current;
-        //        public bool MoveNext()
-        //        {
-        //            while (_listEnumerator.MoveNext())
-        //            {
-        //                int e = _listEnumerator.Current;
-        //                ...
-        //            }
-        //            return false;
-        //        }
-        //    }
-        //}
+            public VertexWorldHandler(EcsEdge source, EcsWorld world, IdsBasket basket)
+            {
+                _source = source;
+                _world = world;
+                _basket = basket;
+            }
+
+            public void OnDelEntity(int entityID)
+            {
+                var span = _basket.GetSpanFor(entityID);
+                foreach (var arcEntityID in span)
+                {
+                }
+            }
+            public void OnNewEntity(int entityID)
+            {
+
+            }
+        }
         #endregion
-    }
-    public interface IEcsEdgeOrientation
-    {
-        public int New(int entityID, int otherEntityID);
-        public void Bind(int arcEntityID, int entityID, int otherEntityID);
-        public bool Has(int entityID, int otherEntityID);
-        public int Get(int entityID, int otherEntityID);
-        public bool TryGet(int otherEntityID, int entityID, out int arcEntityID);
-        public IdsLinkedList.Span Get(int entityID);
-        public IdsLinkedList.LongSpan GetLongs(int entityID);
-        public void Del(int entityID, int otherEntityID);
     }
 }

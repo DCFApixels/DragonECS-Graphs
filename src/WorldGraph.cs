@@ -1,6 +1,5 @@
 ﻿using DCFApixels.DragonECS.Relations.Internal;
 using DCFApixels.DragonECS.Relations.Utils;
-using Leopotam.EcsLite;
 using System;
 
 namespace DCFApixels.DragonECS.Relations.Internal
@@ -45,7 +44,7 @@ namespace DCFApixels.DragonECS.Relations.Internal
 }
 
 namespace DCFApixels.DragonECS
-{ 
+{
     public static class WorldGraphExtensions
     {
         public static EcsEdge SetEdgeWithSelf(this EcsWorld self) => SetEdgeWith(self, self);
@@ -63,12 +62,12 @@ namespace DCFApixels.DragonECS
             return WorldGraph.Register(self, otherWorld, edgeWorld);
         }
 
-        public static void HasEdgeWithSelf(this EcsWorld self) => HasEdgeWith(self, self);
-        public static void HasEdgeWith(this EcsWorld self, EcsWorld otherWorld)
+        public static bool HasEdgeWithSelf(this EcsWorld self) => HasEdgeWith(self, self);
+        public static bool HasEdgeWith(this EcsWorld self, EcsWorld otherWorld)
         {
             if (self == null || otherWorld == null)
                 throw new ArgumentNullException();
-            WorldGraph.HasEdge(self, otherWorld);
+            return WorldGraph.HasEdge(self, otherWorld);
         }
 
         public static EcsEdge GetEdgeWithSelf(this EcsWorld self) => GetEdgeWith(self, self);
