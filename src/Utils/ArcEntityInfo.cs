@@ -6,9 +6,9 @@ namespace DCFApixels.DragonECS
 {
     [StructLayout(LayoutKind.Sequential, Pack = 4, Size = 8)]
     [Serializable]
-    public readonly struct ArcTargets : IEquatable<ArcTargets>
+    public readonly struct ArcEntityInfo : IEquatable<ArcEntityInfo>
     {
-        public static readonly ArcTargets Empty = new ArcTargets();
+        public static readonly ArcEntityInfo Empty = new ArcEntityInfo();
 
         /// <summary>Start vertex entity ID.</summary>
         public readonly int start;
@@ -24,7 +24,7 @@ namespace DCFApixels.DragonECS
         #endregion
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal ArcTargets(int startEntity, int endEntity)
+        internal ArcEntityInfo(int startEntity, int endEntity)
         {
             start = startEntity;
             end = endEntity;
@@ -32,15 +32,15 @@ namespace DCFApixels.DragonECS
 
         #region operators
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool operator ==(ArcTargets a, ArcTargets b) => a.start == b.start && a.end == b.end;
+        public static bool operator ==(ArcEntityInfo a, ArcEntityInfo b) => a.start == b.start && a.end == b.end;
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool operator !=(ArcTargets a, ArcTargets b) => a.start != b.start || a.end != b.end;
+        public static bool operator !=(ArcEntityInfo a, ArcEntityInfo b) => a.start != b.start || a.end != b.end;
         #endregion
 
         #region Other
-        public override bool Equals(object obj) => obj is ArcTargets targets && targets == this;
+        public override bool Equals(object obj) => obj is ArcEntityInfo targets && targets == this;
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool Equals(ArcTargets other) => this == other;
+        public bool Equals(ArcEntityInfo other) => this == other;
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public override int GetHashCode() => ~start ^ end;
         public override string ToString() => $"arc({start} -> {end})";

@@ -5,7 +5,7 @@ namespace DCFApixels.DragonECS
 {
     public class EcsJoinGroup
     {
-        private EcsEdge _source;
+        private EcsArc _source;
 
         private int[] _mapping;
         private int[] _counts;
@@ -13,26 +13,26 @@ namespace DCFApixels.DragonECS
         internal bool _isReleased = true;
 
         #region Properites
-        public EcsEdge Edge => _source;
+        public EcsArc Edge => _source;
         #endregion
 
 
         #region Constrcutors/Dispose
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static EcsJoinGroup New(EcsEdge edge)
-        {
-            return edge.GetFreeGroup();
-        }
-        internal EcsJoinGroup(EcsEdge edge, int denseCapacity = 64)
-        {
-            _source = edge;
-            _source.RegisterGroup(this);
-            int capacity = edge.World.Capacity;
-
-            _mapping = new int[capacity];
-            _counts = new int[capacity];
-        }
-        public void Dispose() => _source.ReleaseGroup(this);
+        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
+        //public static EcsJoinGroup New(EcsArcController edge)
+        //{
+        //    return edge.GetFreeGroup();
+        //}
+        //internal EcsJoinGroup(EcsArcController edge, int denseCapacity = 64)
+        //{
+        //    _source = edge;
+        //    _source.RegisterGroup(this);
+        //    int capacity = edge.World.Capacity;
+        //
+        //    _mapping = new int[capacity];
+        //    _counts = new int[capacity];
+        //}
+        //public void Dispose() => _source.ReleaseGroup(this);
         #endregion
 
         public void Add(int entityFrom, int entityTo)
