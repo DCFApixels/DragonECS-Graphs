@@ -1,6 +1,5 @@
 ﻿using DCFApixels.DragonECS.Relations.Utils;
 using System;
-using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
 namespace DCFApixels.DragonECS
@@ -8,44 +7,40 @@ namespace DCFApixels.DragonECS
     //Edge world
     //Relation entity
     //Relation component
-
-    public class EcsEdge
-    {
-
-    }
     public class EcsArc : IEcsWorldEventListener, IEcsEntityEventListener
     {
         private readonly EcsWorld _startWorld;
         private readonly EcsWorld _endWorld;
         private readonly EcsArcWorld _arcWorld;
 
-        private readonly VertexWorldHandler _worldHandler;
-
-        private readonly IdsBasket _basket = new IdsBasket(256);
+        private readonly VertexWorldHandler _startWorldHandler;
 
         private readonly SparseArray64<int> _relationsMatrix = new SparseArray64<int>();
 
+        private EcsGroup _arcEntities;
         private ArcEntityInfo[] _arkEntityInfos; //N * (N - 1) / 2
 
         #region Properties
         public EcsWorld StartWorld => _startWorld;
         public EcsWorld EndWorld => _endWorld;
         public EcsArcWorld ArcWorld => _arcWorld;
-
+        public EcsReadonlyGroup ArcEntities => _arcEntities.Readonly;
         public bool IsLoop => _startWorld == _endWorld;
         #endregion
 
         #region Constructors
-        internal EcsArc(EcsWorld world, EcsWorld otherWorld, EcsArcWorld arcWorld)
+        internal EcsArc(EcsWorld startWorld, EcsWorld endWorld, EcsArcWorld arcWorld)
         {
+            _startWorld = startWorld;
+            _endWorld = endWorld;
             _arcWorld = arcWorld;
-            _startWorld = world;
-            _endWorld = otherWorld;
-
-            _worldHandler = new VertexWorldHandler(this, _startWorld, _basket);
-            _startWorld.AddListener(_worldHandler);
 
             _arkEntityInfos = new ArcEntityInfo[arcWorld.Capacity];
+
+            _startWorldHandler = new VertexWorldHandler(this, _startWorld);
+
+            _startWorld.AddListener(worldEventListener: _startWorldHandler);
+            _startWorld.AddListener(entityEventListener: _startWorldHandler);
 
             _arcWorld.AddListener(worldEventListener: this);
             _arcWorld.AddListener(entityEventListener: this);
@@ -57,20 +52,24 @@ namespace DCFApixels.DragonECS
         {
             if (Has(startEntityID, endEntityID))
                 throw new EcsRelationException();
+
             int arcEntity = _arcWorld.NewEntity();
-            _basket.AddToHead(startEntityID, endEntityID);
             _relationsMatrix.Add(startEntityID, endEntityID, arcEntity);
+
             _arkEntityInfos[arcEntity] = new ArcEntityInfo(startEntityID, endEntityID);
+            _arcEntities.Add(arcEntity);
             return arcEntity;
         }
         public void Del(int startEntityID, int endEntityID)
         {
-            if (!_relationsMatrix.TryGetValue(startEntityID, endEntityID, out int e))
+            if (!_relationsMatrix.TryGetValue(startEntityID, endEntityID, out int arcEntity))
                 throw new EcsRelationException();
+
             _relationsMatrix.Remove(startEntityID, endEntityID);
-            _basket.DelHead(startEntityID);
-            _arcWorld.DelEntity(e);
-            _arkEntityInfos[e] = ArcEntityInfo.Empty;
+            _arcWorld.DelEntity(arcEntity);
+
+            _arkEntityInfos[arcEntity] = ArcEntityInfo.Empty;
+            _arcEntities.Remove(arcEntity);
         }
         #endregion
 
@@ -79,40 +78,16 @@ namespace DCFApixels.DragonECS
         {
             return _relationsMatrix.Contains(startEntityID, endEntityID);
         }
-        //public bool HasRelationWith(EcsSubject subject, int entityID, int otherEntityID)
-        //{
-        //    if (subject.World != _relationWorld)
-        //        throw new ArgumentException();
-        //    return _source._relationsMatrix.TryGetValue(entityID, otherEntityID, out int entity) && subject.IsMatches(entity);
-        //}
         public int Get(int startEntityID, int endEntityID)
         {
-            if (!_relationsMatrix.TryGetValue(startEntityID, endEntityID, out int e))
+            if (!_relationsMatrix.TryGetValue(startEntityID, endEntityID, out int arcEntityID))
                 throw new EcsRelationException();
-            return e;
+            return arcEntityID;
         }
         public bool TryGet(int startEntityID, int endEntityID, out int arcEntityID)
         {
             return _relationsMatrix.TryGetValue(startEntityID, endEntityID, out arcEntityID);
         }
-        //public bool TryGetRelation(EcsSubject subject, int entityID, int otherEntityID, out int entity)
-        //{
-        //    return _source._relationsMatrix.TryGetValue(entityID, otherEntityID, out entity) && subject.IsMatches(entity);
-        //}
-
-        //#region GetRelations
-        //private IdsLinkedList.Span GetRelations(int entityID)
-        //{
-        //    return _basket.GetSpanFor(entityID);
-        //}
-        ////ReadOnlySpan<int> временная заглушка, потому тут будет спан из линкедлиста
-        ////public ReadOnlySpan<int> GetRelationsWith(EcsSubject subject, int entityID)
-        ////{
-        ////    if (subject.World != _relationWorld)
-        ////        throw new ArgumentException();
-        ////    throw new NotImplementedException();
-        ////}
-        //#endregion
         #endregion
 
         #region ArcEntityInfo
@@ -151,11 +126,6 @@ namespace DCFApixels.DragonECS
         {
             return _endWorld.TryGetArcWith(_startWorld, out arc);
         }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public IdsLinkedList.Span Get(int entityID) => _basket.GetSpanFor(entityID);
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public IdsLinkedList.LongSpan GetLongs(int entityID) => _basket.GetLongSpanFor(_startWorld, entityID);
         #endregion
 
         #region Callbacks
@@ -163,7 +133,10 @@ namespace DCFApixels.DragonECS
         {
             Array.Resize(ref _arkEntityInfos, newSize);
         }
-        void IEcsWorldEventListener.OnReleaseDelEntityBuffer(ReadOnlySpan<int> buffer) { }
+        void IEcsWorldEventListener.OnReleaseDelEntityBuffer(ReadOnlySpan<int> buffer)
+        {
+            _arcWorld.ReleaseDelEntityBuffer(buffer.Length);
+        }
         void IEcsWorldEventListener.OnWorldDestroy() { }
 
         void IEcsEntityEventListener.OnNewEntity(int entityID) { }
@@ -176,30 +149,34 @@ namespace DCFApixels.DragonECS
         #endregion
 
         #region VertexWorldHandler
-        private class VertexWorldHandler : IEcsEntityEventListener
+        private class VertexWorldHandler : IEcsWorldEventListener, IEcsEntityEventListener
         {
             private readonly EcsArc _source;
             private readonly EcsWorld _world;
-            private readonly IdsBasket _basket;
 
-            public VertexWorldHandler(EcsArc source, EcsWorld world, IdsBasket basket)
+            public VertexWorldHandler(EcsArc source, EcsWorld world)
             {
                 _source = source;
                 _world = world;
-                _basket = basket;
             }
 
+            #region Callbacks
             public void OnDelEntity(int entityID)
             {
-                var span = _basket.GetSpanFor(entityID);
-                foreach (var arcEntityID in span)
-                {
-                }
             }
             public void OnNewEntity(int entityID)
             {
-
             }
+            public void OnReleaseDelEntityBuffer(ReadOnlySpan<int> buffer)
+            {
+            }
+            public void OnWorldDestroy()
+            {
+            }
+            public void OnWorldResize(int newSize)
+            {
+            }
+            #endregion
         }
         #endregion
     }
