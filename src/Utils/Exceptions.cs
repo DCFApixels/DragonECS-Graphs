@@ -1,5 +1,18 @@
 ﻿using System;
+using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
+
+namespace DCFApixels.DragonECS.Relations.Internal
+{
+    internal static class Throw
+    {
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        internal static void ArgumentNull()
+        {
+            throw new ArgumentNullException();
+        }
+    }
+}
 
 namespace DCFApixels.DragonECS
 {

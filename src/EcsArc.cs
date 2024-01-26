@@ -120,11 +120,11 @@ namespace DCFApixels.DragonECS
         #region Other
         public EcsArc GetInversetArc()
         {
-            return _endWorld.GetArcWith(_startWorld);
+            return _endWorld.GetArc(_startWorld);
         }
         public bool TryGetInversetArc(out EcsArc arc)
         {
-            return _endWorld.TryGetArcWith(_startWorld, out arc);
+            return _endWorld.TryGetArc(_startWorld, out arc);
         }
         #endregion
 
