@@ -7,13 +7,15 @@ namespace DCFApixels.DragonECS
     //Edge world
     //Relation entity
     //Relation component
-    public class EcsArc : IEcsWorldEventListener, IEcsEntityEventListener
+    public class EcsArc
     {
         private readonly EcsWorld _startWorld;
         private readonly EcsWorld _endWorld;
         private readonly EcsArcWorld _arcWorld;
 
-        private readonly VertexWorldHandler _startWorldHandler;
+        private readonly StartWorldHandler _startWorldHandler;
+        private readonly ArcWorldHandler _arcWorldHandler;
+        private readonly EndWorldHandler _endWorldHandler;
 
         private readonly SparseArray64<int> _relationsMatrix = new SparseArray64<int>();
 
@@ -37,13 +39,16 @@ namespace DCFApixels.DragonECS
 
             _arkEntityInfos = new ArcEntityInfo[arcWorld.Capacity];
 
-            _startWorldHandler = new VertexWorldHandler(this, _startWorld);
+            _startWorldHandler = new StartWorldHandler(this, _startWorld);
+            _arcWorldHandler = new ArcWorldHandler(this);
+            _endWorldHandler = new EndWorldHandler(this, _endWorld);
 
             _startWorld.AddListener(worldEventListener: _startWorldHandler);
             _startWorld.AddListener(entityEventListener: _startWorldHandler);
-
-            _arcWorld.AddListener(worldEventListener: this);
-            _arcWorld.AddListener(entityEventListener: this);
+            _arcWorld.AddListener(worldEventListener: _arcWorldHandler);
+            _arcWorld.AddListener(entityEventListener: _arcWorldHandler);
+            _endWorld.AddListener(worldEventListener: _endWorldHandler);
+            _endWorld.AddListener(entityEventListener: _endWorldHandler);
         }
         #endregion
 
@@ -128,36 +133,80 @@ namespace DCFApixels.DragonECS
         }
         #endregion
 
-        #region Callbacks
-        void IEcsWorldEventListener.OnWorldResize(int newSize)
-        {
-            Array.Resize(ref _arkEntityInfos, newSize);
-        }
-        void IEcsWorldEventListener.OnReleaseDelEntityBuffer(ReadOnlySpan<int> buffer)
-        {
-            _arcWorld.ReleaseDelEntityBuffer(buffer.Length);
-        }
-        void IEcsWorldEventListener.OnWorldDestroy() { }
-
-        void IEcsEntityEventListener.OnNewEntity(int entityID) { }
-        void IEcsEntityEventListener.OnDelEntity(int entityID)
-        {
-            ref ArcEntityInfo rel = ref _arkEntityInfos[entityID];
-            if (_relationsMatrix.Contains(rel.start, rel.end))
-                Del(rel.start, rel.end);
-        }
-        #endregion
 
         #region VertexWorldHandler
-        private class VertexWorldHandler : IEcsWorldEventListener, IEcsEntityEventListener
+        private class ArcWorldHandler : IEcsWorldEventListener, IEcsEntityEventListener
         {
-            private readonly EcsArc _source;
-            private readonly EcsWorld _world;
+            private readonly EcsArc _arc;
 
-            public VertexWorldHandler(EcsArc source, EcsWorld world)
+            public ArcWorldHandler(EcsArc arc)
             {
-                _source = source;
-                _world = world;
+                _arc = arc;
+            }
+
+            #region Callbacks
+            public void OnDelEntity(int entityID)
+            {
+                ref ArcEntityInfo rel = ref _arc._arkEntityInfos[entityID];
+                if (_arc._relationsMatrix.Contains(rel.start, rel.end))
+                {
+                    _arc.Del(rel.start, rel.end);
+                }
+            }
+            public void OnNewEntity(int entityID)
+            {
+            }
+            public void OnReleaseDelEntityBuffer(ReadOnlySpan<int> buffer)
+            {
+                _arc._arcWorld.ReleaseDelEntityBuffer(buffer.Length);
+            }
+            public void OnWorldDestroy()
+            {
+            }
+            public void OnWorldResize(int newSize)
+            {
+                Array.Resize(ref _arc._arkEntityInfos, newSize);
+            }
+            #endregion
+        }
+        private class StartWorldHandler : IEcsWorldEventListener, IEcsEntityEventListener
+        {
+            private readonly EcsArc _arc;
+            private readonly EcsWorld _start;
+
+            public StartWorldHandler(EcsArc arc, EcsWorld world)
+            {
+                _arc = arc;
+                _start = world;
+            }
+
+            #region Callbacks
+            public void OnDelEntity(int entityID)
+            {
+            }
+            public void OnNewEntity(int entityID)
+            {
+            }
+            public void OnReleaseDelEntityBuffer(ReadOnlySpan<int> buffer)
+            {
+            }
+            public void OnWorldDestroy()
+            {
+            }
+            public void OnWorldResize(int newSize)
+            {
+            }
+            #endregion
+        }
+        private class EndWorldHandler : IEcsWorldEventListener, IEcsEntityEventListener
+        {
+            private readonly EcsArc _arc;
+            private readonly EcsWorld _end;
+
+            public EndWorldHandler(EcsArc arc, EcsWorld world)
+            {
+                _arc = arc;
+                _end = world;
             }
 
             #region Callbacks

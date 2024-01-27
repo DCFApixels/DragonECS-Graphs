@@ -29,6 +29,12 @@ namespace DCFApixels.DragonECS
             start = startEntity;
             end = endEntity;
         }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Deconstruct(out int start, out int end)
+        {
+            start = this.start;
+            end = this.end;
+        }
 
         #region operators
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
