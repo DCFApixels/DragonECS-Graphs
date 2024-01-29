@@ -4,11 +4,12 @@ using System;
 
 namespace DCFApixels.DragonECS
 {
-    public static class WorldGraph
+    public static class EcsWorldGraph
     {
         private static readonly SparseArray64<EcsArc> _matrix = new SparseArray64<EcsArc>(4);
         private static EcsArc[] _arcsMapping = new EcsArc[4];
 
+        #region Register/Unregister
         private static EcsArc Register(EcsWorld startWorld, EcsWorld endWorld, EcsArcWorld arcWorld)
         {
             int startWorldID = startWorld.id;
@@ -39,7 +40,19 @@ namespace DCFApixels.DragonECS
             _arcsMapping[arc.ArcWorld.id] = null;
             _matrix.Remove(startWorldID, endWorldID);
         }
+        #endregion
 
+        #region Get/Has
+//        private static EcsArc GetOrRigister(EcsWorld startWorld, EcsWorld otherWorld)
+//        {
+//#if DEBUG
+//            if (!_matrix.Contains(startWorld.id, otherWorld.id))
+//            {
+//                return Register();
+//            }
+//#endif
+//            return _matrix[startWorld.id, otherWorld.id];
+//        }
         private static EcsArc Get(EcsWorld startWorld, EcsWorld otherWorld)
         {
 #if DEBUG
@@ -52,9 +65,7 @@ namespace DCFApixels.DragonECS
         }
         private static bool Has(EcsWorld startWorld, EcsWorld endWorld) => Has(startWorld.id, endWorld.id);
         private static bool Has(int startWorldID, int endWorldID) => _matrix.Contains(startWorldID, endWorldID);
-
-
-
+        #endregion
 
         #region Extension
         public static bool IsRegistered(this EcsArcWorld self)
@@ -82,8 +93,8 @@ namespace DCFApixels.DragonECS
 
 
 
-        public static EcsArc SetLoopArc(this EcsWorld self) => SetArc(self, self);
-        public static EcsArc SetArc(this EcsWorld start, EcsWorld end)
+        public static EcsArc SetLoopArcAuto(this EcsWorld self) => SetArcAuto(self, self);
+        public static EcsArc SetArcAuto(this EcsWorld start, EcsWorld end)
         {
             if (start == null || end == null)
             {

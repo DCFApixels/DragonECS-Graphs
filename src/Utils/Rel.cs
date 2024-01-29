@@ -1,46 +1,47 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System;
+using System.Runtime.CompilerServices;
 
 namespace DCFApixels.DragonECS
 {
-    public readonly struct StartArcEnd
+    public readonly ref struct StartRelEnd
     {
         /// <summary>Start vertex entity ID.</summary>
         public readonly int start;
-        /// <summary>Arc entity ID.</summary>
-        public readonly int arc;
+        /// <summary>Relation entity ID.</summary>
+        public readonly int rel;
         /// <summary>End vertex entity ID.</summary>
         public readonly int end;
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public StartArcEnd(int start, int arc, int end)
+        public StartRelEnd(int start, int rel, int end)
         {
             this.start = start;
-            this.arc = arc;
+            this.rel = rel;
             this.end = end;
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Deconstruct(out int start, out int arc, out int end)
+        public void Deconstruct(out int start, out int rel, out int end)
         {
             start = this.start;
-            arc = this.arc;
+            rel = this.rel;
             end = this.end;
         }
     }
-    public readonly struct ArcEnd
+    public readonly ref struct RelEnd
     {
-        /// <summary>Arc entity ID.</summary>
-        public readonly int arc;
+        /// <summary>Relation entity ID.</summary>
+        public readonly int rel;
         /// <summary>End vertex entity ID.</summary>
         public readonly int end;
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ArcEnd(int arc, int end)
+        public RelEnd(int rel, int end)
         {
-            this.arc = arc;
+            this.rel = rel;
             this.end = end;
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Deconstruct(out int arc, out int end)
+        public void Deconstruct(out int rel, out int end)
         {
-            arc = this.arc;
+            rel = this.rel;
             end = this.end;
         }
     }

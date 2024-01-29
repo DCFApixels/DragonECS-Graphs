@@ -2,6 +2,7 @@
 //Benchmark result of indexer.get speed test with 300 elements:
 //[Dictinary: 6.705us] [SparseArray64: 2.512us].
 using System;
+using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -225,6 +226,7 @@ namespace DCFApixels.DragonECS.Relations.Utils
 
         #region Utils
         [StructLayout(LayoutKind.Sequential, Pack = 4)]
+        [DebuggerDisplay("next{next} hashKey{hashKey} value{value}")]
         private struct Entry
         {
             public int next;        // Index of next entry, -1 if last

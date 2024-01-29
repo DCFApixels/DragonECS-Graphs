@@ -1,12 +1,14 @@
 ﻿using DCFApixels.DragonECS.Relations.Utils;
+using Leopotam.EcsLite;
 using System;
 using System.Runtime.CompilerServices;
 
 namespace DCFApixels.DragonECS
 {
-    //Edge world
-    //Relation entity
-    //Relation component
+    //Arc
+    //Arc world
+    //Rel entity
+    //Component
     public class EcsArc
     {
         private readonly EcsWorld _startWorld;
@@ -19,15 +21,48 @@ namespace DCFApixels.DragonECS
 
         private readonly SparseArray64<int> _relationsMatrix = new SparseArray64<int>();
 
-        private EcsGroup _arcEntities;
-        private ArcEntityInfo[] _arkEntityInfos; //N * (N - 1) / 2
+        private EcsJoin _joinEntities;
+        private EcsGroup _relEntities;
+        private RelEntityInfo[] _relEntityInfos; //N * (N - 1) / 2
+
+        private bool _isLoop;
 
         #region Properties
-        public EcsWorld StartWorld => _startWorld;
-        public EcsWorld EndWorld => _endWorld;
-        public EcsArcWorld ArcWorld => _arcWorld;
-        public EcsReadonlyGroup ArcEntities => _arcEntities.Readonly;
-        public bool IsLoop => _startWorld == _endWorld;
+        public EcsWorld StartWorld
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get { return _startWorld; }
+        }
+        public EcsWorld EndWorld
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get { return _endWorld; }
+        }
+        public EcsArcWorld ArcWorld
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get { return _arcWorld; }
+        }
+        public int ArcWorldID
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get { return _arcWorld.id; }
+        }
+        public EcsReadonlyGroup RelEntities
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get { return _relEntities.Readonly; }
+        }
+        public EcsReadonlyJoin JoinEntities
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get { return _joinEntities.Readonly; }
+        }
+        public bool IsLoop
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get { return _isLoop; }
+        }
         #endregion
 
         #region Constructors
@@ -37,44 +72,51 @@ namespace DCFApixels.DragonECS
             _endWorld = endWorld;
             _arcWorld = arcWorld;
 
-            _arkEntityInfos = new ArcEntityInfo[arcWorld.Capacity];
+            _isLoop = startWorld == endWorld;
 
-            _startWorldHandler = new StartWorldHandler(this, _startWorld);
+            _relEntityInfos = new RelEntityInfo[arcWorld.Capacity];
+
+            _startWorldHandler = new StartWorldHandler(this);
             _arcWorldHandler = new ArcWorldHandler(this);
-            _endWorldHandler = new EndWorldHandler(this, _endWorld);
+            if (!_isLoop)
+            {
+                _endWorldHandler = new EndWorldHandler(this);
+            }
 
-            _startWorld.AddListener(worldEventListener: _startWorldHandler);
-            _startWorld.AddListener(entityEventListener: _startWorldHandler);
-            _arcWorld.AddListener(worldEventListener: _arcWorldHandler);
-            _arcWorld.AddListener(entityEventListener: _arcWorldHandler);
-            _endWorld.AddListener(worldEventListener: _endWorldHandler);
-            _endWorld.AddListener(entityEventListener: _endWorldHandler);
+            _relEntities = EcsGroup.New(_arcWorld);
+            _joinEntities = new EcsJoin(this);
         }
         #endregion
 
         #region New/Del
-        public int New(int startEntityID, int endEntityID)
+        public int NewRelation(int startEntityID, int endEntityID)
         {
             if (Has(startEntityID, endEntityID))
+            {
                 throw new EcsRelationException();
+            }
 
-            int arcEntity = _arcWorld.NewEntity();
-            _relationsMatrix.Add(startEntityID, endEntityID, arcEntity);
+            int relEntity = _arcWorld.NewEntity();
+            _relationsMatrix.Add(startEntityID, endEntityID, relEntity);
 
-            _arkEntityInfos[arcEntity] = new ArcEntityInfo(startEntityID, endEntityID);
-            _arcEntities.Add(arcEntity);
-            return arcEntity;
+            _relEntityInfos[relEntity] = new RelEntityInfo(startEntityID, endEntityID);
+            _relEntities.Add(relEntity);
+            _joinEntities.Add(relEntity);
+            return relEntity;
         }
-        public void Del(int startEntityID, int endEntityID)
+        public void DelRelation(int startEntityID, int endEntityID)
         {
-            if (!_relationsMatrix.TryGetValue(startEntityID, endEntityID, out int arcEntity))
+            if (!_relationsMatrix.TryGetValue(startEntityID, endEntityID, out int relEntity))
+            {
                 throw new EcsRelationException();
+            }
+            _joinEntities.Del(relEntity);
 
             _relationsMatrix.Remove(startEntityID, endEntityID);
-            _arcWorld.DelEntity(arcEntity);
+            _arcWorld.DelEntity(relEntity);
 
-            _arkEntityInfos[arcEntity] = ArcEntityInfo.Empty;
-            _arcEntities.Remove(arcEntity);
+            _relEntityInfos[relEntity] = RelEntityInfo.Empty;
+            _relEntities.Remove(relEntity);
         }
         #endregion
 
@@ -97,28 +139,28 @@ namespace DCFApixels.DragonECS
 
         #region ArcEntityInfo
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool IsArc(int arcEntityID)
+        public bool IsRel(int arcEntityID)
         {
-            if (arcEntityID <= 0 || arcEntityID >= _arkEntityInfos.Length)
+            if (arcEntityID <= 0 || arcEntityID >= _relEntityInfos.Length)
                 return false;
-            return !_arkEntityInfos[arcEntityID].IsEmpty;
+            return !_relEntityInfos[arcEntityID].IsEmpty;
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ArcEntityInfo GetArcInfo(int arcEntityID)
+        public RelEntityInfo GetRelInfo(int arcEntityID)
         {
-            if (arcEntityID <= 0 || arcEntityID >= _arkEntityInfos.Length)
+            if (arcEntityID <= 0 || arcEntityID >= _relEntityInfos.Length)
                 throw new Exception();
-            return _arkEntityInfos[arcEntityID];
+            return _relEntityInfos[arcEntityID];
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int GetArcStart(int arcEntityID)
+        public int GetRelStart(int arcEntityID)
         {
-            return GetArcInfo(arcEntityID).start;
+            return GetRelInfo(arcEntityID).start;
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int GetArcEnd(int arcEntityID)
+        public int GetRelEnd(int arcEntityID)
         {
-            return GetArcInfo(arcEntityID).end;
+            return GetRelInfo(arcEntityID).end;
         }
         #endregion
 
@@ -138,93 +180,84 @@ namespace DCFApixels.DragonECS
         private class ArcWorldHandler : IEcsWorldEventListener, IEcsEntityEventListener
         {
             private readonly EcsArc _arc;
-
             public ArcWorldHandler(EcsArc arc)
             {
                 _arc = arc;
+                EcsArcWorld arcWorld = arc.ArcWorld;
+                arcWorld.AddListener(worldEventListener: this);
+                arcWorld.AddListener(entityEventListener: this);
             }
 
             #region Callbacks
-            public void OnDelEntity(int entityID)
-            {
-                ref ArcEntityInfo rel = ref _arc._arkEntityInfos[entityID];
-                if (_arc._relationsMatrix.Contains(rel.start, rel.end))
-                {
-                    _arc.Del(rel.start, rel.end);
-                }
-            }
-            public void OnNewEntity(int entityID)
-            {
-            }
+            public void OnDelEntity(int entityID) { }
+            public void OnNewEntity(int entityID) { }
             public void OnReleaseDelEntityBuffer(ReadOnlySpan<int> buffer)
             {
+                foreach (var relEntityID in buffer)
+                {
+                    ref RelEntityInfo rel = ref _arc._relEntityInfos[relEntityID];
+                    if (_arc._relationsMatrix.Contains(rel.start, rel.end))
+                    {
+                        _arc.DelRelation(rel.start, rel.end);
+                    }
+                }
                 _arc._arcWorld.ReleaseDelEntityBuffer(buffer.Length);
             }
-            public void OnWorldDestroy()
-            {
-            }
+            public void OnWorldDestroy() { }
             public void OnWorldResize(int newSize)
             {
-                Array.Resize(ref _arc._arkEntityInfos, newSize);
+                Array.Resize(ref _arc._relEntityInfos, newSize);
             }
             #endregion
         }
         private class StartWorldHandler : IEcsWorldEventListener, IEcsEntityEventListener
         {
             private readonly EcsArc _arc;
-            private readonly EcsWorld _start;
-
-            public StartWorldHandler(EcsArc arc, EcsWorld world)
+            public StartWorldHandler(EcsArc arc)
             {
                 _arc = arc;
-                _start = world;
+                EcsWorld startWorld = arc.StartWorld;
+                startWorld.AddListener(worldEventListener: this);
+                startWorld.AddListener(entityEventListener: this);
             }
 
             #region Callbacks
-            public void OnDelEntity(int entityID)
-            {
-            }
-            public void OnNewEntity(int entityID)
-            {
-            }
+            public void OnDelEntity(int startEntityID) { }
+            public void OnNewEntity(int startEntityID) { }
             public void OnReleaseDelEntityBuffer(ReadOnlySpan<int> buffer)
             {
+                foreach (var startEntityID in buffer)
+                {
+                    _arc._joinEntities.DelStart(startEntityID);
+                }
             }
-            public void OnWorldDestroy()
-            {
-            }
-            public void OnWorldResize(int newSize)
-            {
-            }
+            public void OnWorldDestroy() { }
+            public void OnWorldResize(int newSize) { }
             #endregion
         }
         private class EndWorldHandler : IEcsWorldEventListener, IEcsEntityEventListener
         {
             private readonly EcsArc _arc;
-            private readonly EcsWorld _end;
-
-            public EndWorldHandler(EcsArc arc, EcsWorld world)
+            public EndWorldHandler(EcsArc arc)
             {
                 _arc = arc;
-                _end = world;
+                EcsWorld endWorld = arc.EndWorld;
+                endWorld.AddListener(worldEventListener: this);
+                endWorld.AddListener(entityEventListener: this);
             }
 
             #region Callbacks
-            public void OnDelEntity(int entityID)
-            {
-            }
-            public void OnNewEntity(int entityID)
-            {
-            }
+            public void OnDelEntity(int endEntityID) { }
+            public void OnNewEntity(int endEntityID) { }
             public void OnReleaseDelEntityBuffer(ReadOnlySpan<int> buffer)
             {
+                foreach (var endEntityID in buffer)
+                {
+                    _arc._joinEntities.DelEnd(endEntityID);
+                }
             }
-            public void OnWorldDestroy()
-            {
-            }
-            public void OnWorldResize(int newSize)
-            {
-            }
+            public void OnWorldDestroy() { }
+            public void OnWorldResize(int newSize) { }
             #endregion
         }
         #endregion

@@ -1,13 +1,15 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Reflection;
+using System.Diagnostics;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace DCFApixels.DragonECS
 {
-    public class BasketList
+    [DebuggerTypeProxy(typeof(DebuggerProxy))]
+    internal class BasketList
     {
         public const int RECYCLE = -1;
         public const int HEAD = 0;
@@ -15,10 +17,6 @@ namespace DCFApixels.DragonECS
         private BasketInfo[] _baskets = new BasketInfo[64];
         private Node[] _nodes;
         private int _recycledListLast = -1;
-
-        private int _basketsCount = 0;
-        private int[] _recycledBuskets = new int[64];
-        private int _recycledBusketsCount = 0;
 
         #region Constructors
         public BasketList() : this(16) { }
@@ -86,6 +84,11 @@ namespace DCFApixels.DragonECS
             LinkToRecycled(newSize - 1, 1);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int GetBasketNodesCount(int basketIndex)
+        {
+            return _baskets[basketIndex].count;
+        }
 
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -108,7 +111,7 @@ namespace DCFApixels.DragonECS
 
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private bool RemoveFromBasketAt(int basketIndex, int nodeIndex)
+        public void RemoveFromBasket(int basketIndex, int nodeIndex)
         {
 #if DEBUG
             if (nodeIndex <= 0)
@@ -126,11 +129,11 @@ namespace DCFApixels.DragonECS
             {
                 basketInfo.nodeIndex = nextNode;
             }
-            return --basketInfo.count > 0;
+            basketInfo.count--;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private int InsertToBasket(int basketIndex, int value)
+        public int AddToBasket(int basketIndex, int value)
         {
             ref BasketInfo basketInfo = ref _baskets[basketIndex];
             int newNodeIndex = TakeRecycledNode();
@@ -273,6 +276,11 @@ namespace DCFApixels.DragonECS
         //    return newBasketIndex;
         //}
 
+        public static void CreateCrossRef(int leftBasketIndex, int rightBasketIndex)
+        {
+
+        }
+
 
         #region Node
         [StructLayout(LayoutKind.Sequential, Pack = 4, Size = 8)]
@@ -306,86 +314,54 @@ namespace DCFApixels.DragonECS
         #endregion
 
         #region Basket
-        public Basket this[int basketIndex]
+        public BasketIterator this[int basketIndex]
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => GetBasket(basketIndex);
+            get => GetBasketIterator(basketIndex);
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Basket GetBasket(int basketIndex)
+        public BasketIterator GetBasketIterator(int basketIndex)
         {
             if (_baskets.Length <= basketIndex)
             {
                 int newSize = GetHighBitNumber((uint)basketIndex) << 1;
                 Array.Resize(ref _baskets, newSize);
             }
-            return new Basket(this, basketIndex);
+            return new BasketIterator(this, basketIndex);
         }
-        public struct Basket : IEnumerable<int>
+        public readonly struct BasketIterator : IEnumerable<int>
         {
             private readonly BasketList _basketList;
-            public readonly int _basketIndex;
-            private int _count;
-
+            private readonly int _basketIndex;
             public int Count
             {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                get => _count;
-            }
-            public int BasketIndex
-            {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                get => _basketIndex;
-            }
-            public int StartNodeIndex
-            {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                get => _basketList._baskets[_basketIndex].nodeIndex;
+                get { return _basketList._baskets[_basketIndex].count; }
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public Basket(BasketList basketList, int basketIndex)
+            public BasketIterator(BasketList basketList, int basketIndex)
             {
                 _basketList = basketList;
                 _basketIndex = basketIndex;
-                _count = _basketList._baskets[basketIndex].count;
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public int Add(int value)
-            {
-                _count++;
-                return _basketList.InsertToBasket(_basketIndex, value);
-            }
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void RemoveAt(int nodeIndex)
-            {
-#if DEBUG
-                if (_count <= 0)
-                    throw new Exception();
-#endif
-                _basketList.RemoveFromBasketAt(_basketIndex, nodeIndex);
-                _count--;
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public Enumerator GetEnumerator() => new Enumerator(this);
             IEnumerator<int> IEnumerable<int>.GetEnumerator() => GetEnumerator();
             IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-
             public struct Enumerator : IEnumerator<int>
             {
                 private readonly Node[] _nodes;
                 private int _nodeIndex;
-                private int _nextNode;
+                private int _nextNodeIndex;
                 private int _count;
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                public Enumerator(Basket iterator)
+                public Enumerator(BasketIterator iterator)
                 {
                     ref BasketInfo basketInfo = ref iterator._basketList._baskets[iterator._basketIndex];
                     _nodes = iterator._basketList._nodes;
                     _nodeIndex = -1;
-                    _nextNode = basketInfo.nodeIndex;
+                    _nextNodeIndex = basketInfo.nodeIndex;
                     _count = basketInfo.count;
                 }
                 public int Current
@@ -398,14 +374,65 @@ namespace DCFApixels.DragonECS
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 public bool MoveNext()
                 {
-                    _nodeIndex = _nextNode;
-                    _nextNode = _nodes[_nextNode].next;
+                    _nodeIndex = _nextNodeIndex;
+                    _nextNodeIndex = _nodes[_nextNodeIndex].next;
                     return _nodeIndex > 0 && _count-- > 0;
                 }
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 public void Reset() { }
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 public void Dispose() { }
+            }
+        }
+        #endregion
+
+        #region DebuggerProxy
+        private class DebuggerProxy
+        {
+            private BasketList _basketList;
+            public IEnumerable<BasketIteratorDebbugerProxy> Baskets
+            {
+                get
+                {
+                    List<BasketIteratorDebbugerProxy> result = new List<BasketIteratorDebbugerProxy>();
+                    for (int i = 0; i < _basketList._baskets.Length; i++)
+                    {
+                        if (_basketList._baskets[i].count > 0)
+                        {
+                            result.Add(new BasketIteratorDebbugerProxy(_basketList[i]));
+                        }
+                    }
+                    return result;
+                }
+            }
+            public DebuggerProxy(BasketList basketList)
+            {
+                _basketList = basketList;
+            }
+            public struct BasketIteratorDebbugerProxy
+            {
+                private BasketIterator _iterrator;
+                public int Count => _iterrator.Count;
+                public IEnumerable<int> RelEntities
+                {
+                    get
+                    {
+                        List<int> result = new List<int>();
+                        foreach (var e in _iterrator)
+                        {
+                            result.Add(e);
+                        }
+                        return result;
+                    }
+                }
+                public BasketIteratorDebbugerProxy(BasketIterator iterrator)
+                {
+                    _iterrator = iterrator;
+                }
+                public override string ToString()
+                {
+                    return $"count: {_iterrator.Count}";
+                }
             }
         }
         #endregion
