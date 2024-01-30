@@ -181,10 +181,10 @@ namespace DCFApixels.DragonECS.Relations.Utils
             var (startEntityID, endEntityID) = _source.GetRelationInfo(relEntityID);
             ref RelNodesInfo relInfo = ref _relNodesMapping[relEntityID];
             _startBaskets.RemoveFromBasket(startEntityID, relInfo.startNodeIndex);
-            //if (!_isLoop)
-            //{
+            if (!_isLoop)
+            {
                 _startBaskets.RemoveFromBasket(endEntityID, relInfo.endNodeIndex);
-            //}
+            }
         }
         public void DelStart(int startEntityID)
         {

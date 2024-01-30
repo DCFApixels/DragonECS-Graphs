@@ -92,14 +92,11 @@ namespace DCFApixels.DragonECS
             if (nodeIndex <= 0)
             {
                 //Throw.ArgumentOutOfRange();
+                return;
             }
 #endif
             ref BasketInfo basketInfo = ref _baskets[basketIndex];
 
-            if (basketInfo.count <= 4)
-            {
-
-            }
             ref var node = ref _nodes[nodeIndex];
             int nextNode = node.next;
 

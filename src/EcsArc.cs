@@ -102,10 +102,10 @@ namespace DCFApixels.DragonECS
         {
             _startWorldHandler.Destroy();
             _arcWorldHandler.Destroy(); 
-            //if (!_isLoop)
-            //{
-                _endWorldHandler.Destroy();
-            //}
+            if (!_isLoop)
+            {
+              _endWorldHandler.Destroy();
+            }
         }
         #endregion
 
