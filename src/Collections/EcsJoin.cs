@@ -220,7 +220,7 @@ namespace DCFApixels.DragonECS.Relations.Utils
                 //_endBaskets.RemoveFromBasket(endEntityID, endNodeIndex);
 
                 arc.ArcWorld.DelEntity(relEntityID);
-                //if(!_isLoop)
+                if(!_isLoop)
                     arc.ArcWorld.DelEntity(revereceRelEntitiy);
             }
             //_startBaskets.RemoveBasket(startEntityID);
@@ -236,7 +236,7 @@ namespace DCFApixels.DragonECS.Relations.Utils
                 //_startBaskets.RemoveFromBasket(startEntityID, startNodeIndex);
 
                 arc.ArcWorld.DelEntity(relEntityID);
-                //if(!_isLoop)
+                if(!_isLoop)
                     arc.ArcWorld.DelEntity(revereceRelEntitiy);
             }
             //_endBaskets.RemoveBasket(endEntityID);
