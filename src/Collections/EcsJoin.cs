@@ -183,7 +183,7 @@ namespace DCFApixels.DragonECS.Relations.Utils
             _startBaskets.RemoveFromBasket(startEntityID, relInfo.startNodeIndex);
             if (!_isLoop)
             {
-                _startBaskets.RemoveFromBasket(endEntityID, relInfo.endNodeIndex);
+                //_startBaskets.RemoveFromBasket(endEntityID, relInfo.endNodeIndex);
             }
         }
         public void DelStart(int startEntityID)
@@ -226,13 +226,13 @@ namespace DCFApixels.DragonECS.Relations.Utils
                 //    arc.ArcWorld.DelEntity(revereceRelEntitiy);
                 //}
 
-                int endNodeIndex = _relNodesMapping[relEntityID].endNodeIndex;
+                //int endNodeIndex = _relNodesMapping[relEntityID].endNodeIndex;
                 arc.ArcWorld.DelEntity(relEntityID);
-                if (!_isLoop)
-                {
-                    int revereceRelEntitiy = _endBaskets.Get(endNodeIndex);
-                    arc.ArcWorld.DelEntity(revereceRelEntitiy);
-                }
+                //if (!_isLoop)
+                //{
+                //    int revereceRelEntitiy = _endBaskets.Get(endNodeIndex);
+                //    arc.ArcWorld.DelEntity(revereceRelEntitiy);
+                //}
             }
             //_startBaskets.RemoveBasket(startEntityID);
         }
@@ -253,13 +253,13 @@ namespace DCFApixels.DragonECS.Relations.Utils
                 //    arc.ArcWorld.DelEntity(revereceRelEntitiy);
                 //}
 
-                int startNodeIndex = _relNodesMapping[relEntityID].startNodeIndex;
+                //int startNodeIndex = _relNodesMapping[relEntityID].startNodeIndex;
                 arc.ArcWorld.DelEntity(relEntityID);
-                if (!_isLoop)
-                {
-                    int revereceRelEntitiy = _startBaskets.Get(startNodeIndex);
-                    arc.ArcWorld.DelEntity(revereceRelEntitiy);
-                }
+                //if (!_isLoop)
+                //{
+                //    int revereceRelEntitiy = _startBaskets.Get(startNodeIndex);
+                //    arc.ArcWorld.DelEntity(revereceRelEntitiy);
+                //}
             }
             //_endBaskets.RemoveBasket(endEntityID);
         }
