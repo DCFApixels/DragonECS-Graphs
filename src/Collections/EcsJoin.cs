@@ -1,4 +1,5 @@
-﻿using System;
+﻿using DCFApixels.DragonECS.Relations.Internal;
+using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using static DCFApixels.DragonECS.Relations.Utils.EcsJoin;
@@ -41,7 +42,7 @@ namespace DCFApixels.DragonECS.Relations.Utils
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return _source.IsLoopArc; }
         }
-        public EnumerableArcEnd this[int startEntityID]
+        public EnumerableRelEnd this[int startEntityID]
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return _source[startEntityID]; }
@@ -61,7 +62,7 @@ namespace DCFApixels.DragonECS.Relations.Utils
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool HasEnd(int endEntityID) { return _source.HasEnd(endEntityID); }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public EnumerableArcEnd GetRelEnds(int startEntityID) { return _source.GetRelEnds(startEntityID); }
+        public EnumerableRelEnd GetRelEnds(int startEntityID) { return _source.GetRelEnds(startEntityID); }
         #endregion
 
         #region Internal
@@ -92,7 +93,7 @@ namespace DCFApixels.DragonECS.Relations.Utils
 
         private readonly BasketList _startBaskets;
         private readonly BasketList _endBaskets;
-        private readonly RelInfo[] _relMapping;
+        private readonly RelNodesInfo[] _relNodesMapping;
 
         #region Properties
         public EcsReadonlyJoin Readonly
@@ -131,7 +132,7 @@ namespace DCFApixels.DragonECS.Relations.Utils
             get { return _isLoop; }
         }
 
-        public EnumerableArcEnd this[int startEntityID]
+        public EnumerableRelEnd this[int startEntityID]
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return GetRelEnds(startEntityID); }
@@ -145,60 +146,52 @@ namespace DCFApixels.DragonECS.Relations.Utils
             _isLoop = arc.IsLoop;
 
             _startBaskets = new BasketList();
-            if (_isLoop)
-            {
-                _endBaskets = _startBaskets;
-            }
-            else
-            {
-                _endBaskets = new BasketList();
-            }
-            _relMapping = new RelInfo[arc.ArcWorld.Capacity];
+            //if (_isLoop)
+            //{
+            //    _endBaskets = _startBaskets;
+            //}
+            //else
+            //{
+            //    _endBaskets = new BasketList();
+            //}
+            _endBaskets = new BasketList();
+
+            _relNodesMapping = new RelNodesInfo[arc.ArcWorld.Capacity];
         }
         #endregion
 
         #region Add/Del
         public void Add(int relEntityID)
         {
-            var (startEntityID, endEntityID) = _source.GetRelInfo(relEntityID);
-            ref RelInfo arcInfo = ref _relMapping[relEntityID];
+            var (startEntityID, endEntityID) = _source.GetRelationInfo(relEntityID);
+            ref RelNodesInfo arcInfo = ref _relNodesMapping[relEntityID];
 
             arcInfo.startNodeIndex = _startBaskets.AddToBasket(startEntityID, relEntityID);
-            if (_isLoop)
-            {
-                arcInfo.endNodeIndex = arcInfo.startNodeIndex;
-            }
-            else
-            {
-                arcInfo.endNodeIndex = _endBaskets.AddToBasket(endEntityID, relEntityID);
-            }
-
-            //arcInfo.endNodeIndex = _endBaskets.AddToBasket(endEntityID, relEntityID);
-            //if (!_isLoop)
+            //if (_isLoop)
             //{
-            //    arcInfo.startNodeIndex = _startBaskets.AddToBasket(startEntityID, relEntityID);
+            //    arcInfo.endNodeIndex = arcInfo.startNodeIndex;
             //}
             //else
             //{
-            //    arcInfo.startNodeIndex = arcInfo.endNodeIndex;
+                arcInfo.endNodeIndex = _endBaskets.AddToBasket(endEntityID, relEntityID);
             //}
         }
         public void Del(int relEntityID)
         {
-            var (startEntityID, endEntityID) = _source.GetRelInfo(relEntityID);
-            ref RelInfo relInfo = ref _relMapping[relEntityID];
+            var (startEntityID, endEntityID) = _source.GetRelationInfo(relEntityID);
+            ref RelNodesInfo relInfo = ref _relNodesMapping[relEntityID];
             _startBaskets.RemoveFromBasket(startEntityID, relInfo.startNodeIndex);
-            if (!_isLoop)
-            {
+            //if (!_isLoop)
+            //{
                 _startBaskets.RemoveFromBasket(endEntityID, relInfo.endNodeIndex);
-            }
+            //}
         }
         public void DelStart(int startEntityID)
         {
             foreach (var relEntityID in _startBaskets.GetBasketIterator(startEntityID))
             {
                 var endEntityID = _source.GetRelEnd(relEntityID);
-                ref RelInfo relInfo = ref _relMapping[relEntityID];
+                ref RelNodesInfo relInfo = ref _relNodesMapping[relEntityID];
                 _endBaskets.RemoveFromBasket(endEntityID, relInfo.startNodeIndex);
             }
             _startBaskets.RemoveBasket(startEntityID);
@@ -208,17 +201,75 @@ namespace DCFApixels.DragonECS.Relations.Utils
             foreach (var relEntityID in _endBaskets.GetBasketIterator(endEntityID))
             {
                 var startEntityID = _source.GetRelStart(relEntityID);
-                ref RelInfo relInfo = ref _relMapping[relEntityID];
+                ref RelNodesInfo relInfo = ref _relNodesMapping[relEntityID];
                 _startBaskets.RemoveFromBasket(startEntityID, relInfo.endNodeIndex);
             }
             _endBaskets.RemoveBasket(endEntityID);
+        }
+
+
+        private void DelStartAndDelRelEntities(int startEntityID, EcsArc arc)
+        {
+
+            foreach (var relEntityID in _startBaskets.GetBasketIterator(startEntityID))
+            {
+                int endEntityID = _source.GetRelEnd(relEntityID);
+                int endNodeIndex = _relNodesMapping[relEntityID].endNodeIndex;
+                int revereceRelEntitiy = _endBaskets.Get(endNodeIndex);
+
+                //_endBaskets.RemoveFromBasket(endEntityID, endNodeIndex);
+
+                arc.ArcWorld.DelEntity(relEntityID);
+                //if(!_isLoop)
+                    arc.ArcWorld.DelEntity(revereceRelEntitiy);
+            }
+            //_startBaskets.RemoveBasket(startEntityID);
+        }
+        private void DelEndAndDelRelEntities(int endEntityID, EcsArc arc)
+        {
+            foreach (var relEntityID in _endBaskets.GetBasketIterator(endEntityID))
+            {
+                int startEntityID = _source.GetRelStart(relEntityID);
+                int startNodeIndex = _relNodesMapping[relEntityID].startNodeIndex;
+                int revereceRelEntitiy = _startBaskets.Get(startNodeIndex);
+
+                //_startBaskets.RemoveFromBasket(startEntityID, startNodeIndex);
+
+                arc.ArcWorld.DelEntity(relEntityID);
+                //if(!_isLoop)
+                    arc.ArcWorld.DelEntity(revereceRelEntitiy);
+            }
+            //_endBaskets.RemoveBasket(endEntityID);
+        }
+        public struct FriendEcsArc
+        {
+            private EcsJoin _join;
+            public FriendEcsArc(EcsArc arc, EcsJoin join)
+            {
+                if (arc.IsInit_Internal != false)
+                {
+                    Throw.UndefinedException();
+                }
+                _join = join;
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void DelStartAndDelRelEntities(int startEntityID, EcsArc arc)
+            {
+                _join.DelStartAndDelRelEntities(startEntityID, arc);
+            }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void DelEndAndDelRelEntities(int endEntityID, EcsArc arc)
+            {
+                _join.DelEndAndDelRelEntities(endEntityID, arc);
+            }
         }
         #endregion
 
         #region Has
         public bool Has(int relEntityID)
         {
-            return _relMapping[relEntityID] != RelInfo.Empty;
+            return _relNodesMapping[relEntityID] != RelNodesInfo.Empty;
         }
         public bool HasStart(int startEntityID)
         {
@@ -243,19 +294,19 @@ namespace DCFApixels.DragonECS.Relations.Utils
 
         #region GetRelEnds
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public EnumerableArcEnd GetRelEnds(int startEntityID)
+        public EnumerableRelEnd GetRelEnds(int startEntityID)
         {
-            return new EnumerableArcEnd(_source, _startBaskets.GetBasketIterator(startEntityID).GetEnumerator());
+            return new EnumerableRelEnd(_source, _startBaskets.GetBasketIterator(startEntityID).GetEnumerator());
         }
         #endregion
 
         #region EnumerableArcEnd
-        public readonly ref struct EnumerableArcEnd //: IEnumerable<RelEnd>
+        public readonly ref struct EnumerableRelEnd //: IEnumerable<RelEnd>
         {
             private readonly EcsArc _arc;
             private readonly BasketList.BasketIterator.Enumerator _iterator;
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            internal EnumerableArcEnd(EcsArc arc, BasketList.BasketIterator.Enumerator iterator)
+            internal EnumerableRelEnd(EcsArc arc, BasketList.BasketIterator.Enumerator iterator)
             {
                 _arc = arc;
                 _iterator = iterator;
@@ -295,19 +346,19 @@ namespace DCFApixels.DragonECS.Relations.Utils
         #endregion
 
         #region ArcInfo
-        private struct RelInfo : IEquatable<RelInfo>
+        private struct RelNodesInfo : IEquatable<RelNodesInfo>
         {
-            public readonly static RelInfo Empty = default;
+            public readonly static RelNodesInfo Empty = default;
             public int startNodeIndex;
             public int endNodeIndex;
 
             #region Object
             public override bool Equals(object obj)
             {
-                return obj is RelInfo && Equals((RelInfo)obj);
+                return obj is RelNodesInfo && Equals((RelNodesInfo)obj);
             }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public bool Equals(RelInfo other)
+            public bool Equals(RelNodesInfo other)
             {
                 return startNodeIndex == other.startNodeIndex &&
                     endNodeIndex == other.endNodeIndex;
@@ -321,9 +372,9 @@ namespace DCFApixels.DragonECS.Relations.Utils
 
             #region operators
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static bool operator ==(RelInfo a, RelInfo b) => a.startNodeIndex == b.startNodeIndex && a.endNodeIndex == b.endNodeIndex;
+            public static bool operator ==(RelNodesInfo a, RelNodesInfo b) => a.startNodeIndex == b.startNodeIndex && a.endNodeIndex == b.endNodeIndex;
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static bool operator !=(RelInfo a, RelInfo b) => a.startNodeIndex != b.startNodeIndex || a.endNodeIndex != b.endNodeIndex;
+            public static bool operator !=(RelNodesInfo a, RelNodesInfo b) => a.startNodeIndex != b.startNodeIndex || a.endNodeIndex != b.endNodeIndex;
             #endregion
         }
         #endregion

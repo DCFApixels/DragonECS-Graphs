@@ -16,7 +16,7 @@ namespace DCFApixels.DragonECS
             int endWorldID = endWorld.id;
             int arcWorldID = arcWorld.id;
 
-            if(_arcsMapping.Length <= arcWorldID)
+            if (_arcsMapping.Length <= arcWorldID)
             {
                 Array.Resize(ref _arcsMapping, arcWorldID + 4);
             }
@@ -32,6 +32,10 @@ namespace DCFApixels.DragonECS
             _arcsMapping[arcWorldID] = arc;
             return arc;
         }
+        public static bool IsRegistered(EcsArc arc)
+        {
+            return Has(arc.StartWorld.id, arc.EndWorld.id);
+        }
         private static void Unregister(EcsWorld startWorld, EcsWorld endWorld)
         {
             int startWorldID = startWorld.id;
@@ -39,20 +43,21 @@ namespace DCFApixels.DragonECS
             EcsArc arc = _matrix[startWorldID, endWorldID];
             _arcsMapping[arc.ArcWorld.id] = null;
             _matrix.Remove(startWorldID, endWorldID);
+            arc.Destroy();
         }
         #endregion
 
         #region Get/Has
-//        private static EcsArc GetOrRigister(EcsWorld startWorld, EcsWorld otherWorld)
-//        {
-//#if DEBUG
-//            if (!_matrix.Contains(startWorld.id, otherWorld.id))
-//            {
-//                return Register();
-//            }
-//#endif
-//            return _matrix[startWorld.id, otherWorld.id];
-//        }
+        //        private static EcsArc GetOrRigister(EcsWorld startWorld, EcsWorld otherWorld)
+        //        {
+        //#if DEBUG
+        //            if (!_matrix.Contains(startWorld.id, otherWorld.id))
+        //            {
+        //                return Register();
+        //            }
+        //#endif
+        //            return _matrix[startWorld.id, otherWorld.id];
+        //        }
         private static EcsArc Get(EcsWorld startWorld, EcsWorld otherWorld)
         {
 #if DEBUG
@@ -63,8 +68,14 @@ namespace DCFApixels.DragonECS
 #endif
             return _matrix[startWorld.id, otherWorld.id];
         }
-        private static bool Has(EcsWorld startWorld, EcsWorld endWorld) => Has(startWorld.id, endWorld.id);
-        private static bool Has(int startWorldID, int endWorldID) => _matrix.Contains(startWorldID, endWorldID);
+        private static bool Has(EcsWorld startWorld, EcsWorld endWorld)
+        {
+            return Has(startWorld.id, endWorld.id);
+        }
+        private static bool Has(int startWorldID, int endWorldID)
+        {
+            return _matrix.Contains(startWorldID, endWorldID);
+        }
         #endregion
 
         #region Extension
@@ -84,7 +95,7 @@ namespace DCFApixels.DragonECS
                 Throw.ArgumentNull();
             }
             int id = self.id;
-            if(id < _arcsMapping.Length && _arcsMapping[self.id] == null)
+            if (id < _arcsMapping.Length && _arcsMapping[self.id] == null)
             {
                 throw new Exception();
             }
@@ -92,15 +103,45 @@ namespace DCFApixels.DragonECS
         }
 
 
-
-        public static EcsArc SetLoopArcAuto(this EcsWorld self) => SetArcAuto(self, self);
-        public static EcsArc SetArcAuto(this EcsWorld start, EcsWorld end)
+        public static EcsArc SetLoopArcAuto<TWorld>(this TWorld self, out EcsLoopArcWorld<TWorld> arcWorld)
+            where TWorld : EcsWorld
+        {
+            if (self == null)
+            {
+                Throw.ArgumentNull();
+            }
+            if (typeof(TWorld) != self.GetType())
+            {
+                EcsDebug.PrintWarning($"{nameof(TWorld)} is not {self.GetType().Name}");
+            }
+            arcWorld = new EcsLoopArcWorld<TWorld>();
+            return Register(self, self, arcWorld);
+        }
+        public static EcsArc SetArcAuto<TStartWorld, TEndWorld>(this TStartWorld start, TEndWorld end, out EcsArcWorld<TStartWorld, TEndWorld> arcWorld)
+            where TStartWorld : EcsWorld
+            where TEndWorld : EcsWorld
         {
             if (start == null || end == null)
             {
                 Throw.ArgumentNull();
             }
-            return Register(start, end, new EcsArcWorld());
+            if (typeof(TStartWorld) == typeof(EcsWorld) && typeof(TEndWorld) == typeof(EcsWorld))
+            {
+                EcsDebug.PrintWarning($"{nameof(TStartWorld)} is not {start.GetType().Name} or {nameof(TEndWorld)} is not {end.GetType().Name}");
+            }
+            arcWorld = new EcsArcWorld<TStartWorld, TEndWorld>();
+            return Register(start, end, arcWorld);
+        }
+        public static EcsArc SetLoopArcAuto<TWorld>(this TWorld self)
+            where TWorld : EcsWorld
+        {
+            return SetLoopArcAuto(self, out _);
+        }
+        public static EcsArc SetArcAuto<TStartWorld, TEndWorld>(this TStartWorld start, TEndWorld end)
+            where TStartWorld : EcsWorld
+            where TEndWorld : EcsWorld
+        {
+            return SetArcAuto(start, end, out _);
         }
 
         public static EcsArc SetLoopArc(this EcsWorld self, EcsArcWorld arc) => SetArc(self, self, arc);

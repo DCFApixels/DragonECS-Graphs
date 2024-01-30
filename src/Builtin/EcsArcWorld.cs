@@ -1,4 +1,11 @@
 ﻿namespace DCFApixels.DragonECS
 {
-    public sealed class EcsArcWorld : EcsWorld { }
+    public abstract class EcsArcWorld : EcsWorld { }
+    public sealed class EcsLoopArcWorld<TWorld> : EcsArcWorld
+        where TWorld : EcsWorld
+    { }
+    public sealed class EcsArcWorld<TStartWorld, TEndWorld> : EcsArcWorld
+        where TStartWorld : EcsWorld
+        where TEndWorld : EcsWorld
+    { }
 }

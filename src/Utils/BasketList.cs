@@ -1,4 +1,5 @@
-﻿using System;
+﻿using DCFApixels.DragonECS.Relations.Internal;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -42,16 +43,6 @@ namespace DCFApixels.DragonECS
         [MethodImpl(MethodImplOptions.NoInlining)]
         private void Resize(int newSize)
         {
-            //int oldSize = _nodes.Length;
-            //Array.Resize(ref _nodes, newSize);
-            //int leftNode = newSize - 1;
-            //for (int i = newSize - 1, n = oldSize; i >= n; i--)
-            //{
-            //    Link(i, leftNode);
-            //    leftNode = i;
-            //}
-            //LinkToRecycled(newSize - 1, oldSize);
-
             int oldSize = _nodes.Length;
             Array.Resize(ref _nodes, newSize);
             int leftNode = newSize - 1;
@@ -65,15 +56,6 @@ namespace DCFApixels.DragonECS
         [MethodImpl(MethodImplOptions.NoInlining)]
         private void Initialize(int newSize)
         {
-            //_nodes = new Node[newSize];
-            //int leftNode = newSize - 1;
-            //for (int i = newSize - 1, n = 1; i >= n; i--)
-            //{
-            //    Link(i, leftNode);
-            //    leftNode = i;
-            //}
-            //LinkToRecycled(newSize - 1, 1);
-
             _nodes = new Node[newSize];
             int leftNode = newSize - 1;
             for (int i = 1; i < newSize; i++)
@@ -101,13 +83,6 @@ namespace DCFApixels.DragonECS
         {
             return _nodes[nodeIndex].value;
         }
-        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //public ref readonly Node GetNode(int nodeIndex)
-        //{
-        //    return ref _nodes[nodeIndex];
-        //}
-
-
 
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -116,10 +91,15 @@ namespace DCFApixels.DragonECS
 #if DEBUG
             if (nodeIndex <= 0)
             {
-                throw new ArgumentOutOfRangeException();
+                //Throw.ArgumentOutOfRange();
             }
 #endif
             ref BasketInfo basketInfo = ref _baskets[basketIndex];
+
+            if (basketInfo.count <= 4)
+            {
+
+            }
             ref var node = ref _nodes[nodeIndex];
             int nextNode = node.next;
 
@@ -208,20 +188,18 @@ namespace DCFApixels.DragonECS
             }
             ref Node endNode = ref _nodes[endNodeIndex];
 
-            if (_recycledListLast != -1)
-            {
-                //_nodes[_recycledListLast].next = startNodeIndex; //link recycled nodes;
-                //startNode.prev = _recycledListLast;
-                //_recycledListLast = endNodeIndex;
-                Link(_recycledListLast, startNodeIndex);
-            }
-            _recycledListLast = endNodeIndex;
-
+            LinkToRecycled(startNodeIndex, endNodeIndex);
             Link(startNode.prev, endNode.next);
 
             basket.count = 0;
         }
 
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void UpBasketsSize(int minSize)
+        {
+            int newSize = GetHighBitNumber((uint)minSize) << 1;
+            Array.Resize(ref _baskets, newSize);
+        }
         private static int GetHighBitNumber(uint bits)
         {
             if (bits == 0)
@@ -255,32 +233,6 @@ namespace DCFApixels.DragonECS
             }
             return bit;
         }
-
-        //public int NewBasket()
-        //{
-        //    int newBasketIndex;
-        //    if(_recycledBusketsCount > 0)
-        //    {
-        //        newBasketIndex = _recycledBuskets[--_recycledBusketsCount];
-        //    }
-        //    else
-        //    {
-        //        newBasketIndex = _basketsCount;
-        //        if(_basketsCount >= _baskets.Length)
-        //        {
-        //            Array.Resize(ref _baskets, _baskets.Length << 1);
-        //        }
-        //    }
-        //    _basketsCount++;
-        //    _baskets[newBasketIndex] = BasketInfo.Empty;
-        //    return newBasketIndex;
-        //}
-
-        public static void CreateCrossRef(int leftBasketIndex, int rightBasketIndex)
-        {
-
-        }
-
 
         #region Node
         [StructLayout(LayoutKind.Sequential, Pack = 4, Size = 8)]
@@ -324,8 +276,7 @@ namespace DCFApixels.DragonECS
         {
             if (_baskets.Length <= basketIndex)
             {
-                int newSize = GetHighBitNumber((uint)basketIndex) << 1;
-                Array.Resize(ref _baskets, newSize);
+                UpBasketsSize(basketIndex);
             }
             return new BasketIterator(this, basketIndex);
         }

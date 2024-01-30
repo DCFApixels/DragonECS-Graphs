@@ -11,6 +11,21 @@ namespace DCFApixels.DragonECS.Relations.Internal
         {
             throw new ArgumentNullException();
         }
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        internal static void UndefinedException()
+        {
+            throw new Exception();
+        }
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        internal static void ArgumentOutOfRange()
+        {
+            throw new ArgumentOutOfRangeException();
+        }
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        internal static void UndefinedRelationException()
+        {
+            throw new EcsRelationException();
+        }
     }
 }
 
