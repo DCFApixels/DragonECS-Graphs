@@ -173,7 +173,7 @@ namespace DCFApixels.DragonECS.Relations.Utils
             //}
             //else
             //{
-                arcInfo.endNodeIndex = _endBaskets.AddToBasket(endEntityID, relEntityID);
+            arcInfo.endNodeIndex = _endBaskets.AddToBasket(endEntityID, relEntityID);
             //}
         }
         public void Del(int relEntityID)
@@ -208,36 +208,58 @@ namespace DCFApixels.DragonECS.Relations.Utils
         }
 
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void DelStartAndDelRelEntities(int startEntityID, EcsArc arc)
         {
 
             foreach (var relEntityID in _startBaskets.GetBasketIterator(startEntityID))
             {
-                int endEntityID = _source.GetRelEnd(relEntityID);
+                //int endEntityID = _source.GetRelEnd(relEntityID);
+                //int endNodeIndex = _relNodesMapping[relEntityID].endNodeIndex;
+                //int revereceRelEntitiy = _endBaskets.Get(endNodeIndex);
+                //
+                ////_endBaskets.RemoveFromBasket(endEntityID, endNodeIndex);
+                //
+                //arc.ArcWorld.DelEntity(relEntityID);
+                //if(!_isLoop)
+                //{
+                //    arc.ArcWorld.DelEntity(revereceRelEntitiy);
+                //}
+
                 int endNodeIndex = _relNodesMapping[relEntityID].endNodeIndex;
-                int revereceRelEntitiy = _endBaskets.Get(endNodeIndex);
-
-                //_endBaskets.RemoveFromBasket(endEntityID, endNodeIndex);
-
                 arc.ArcWorld.DelEntity(relEntityID);
-                if(!_isLoop)
+                if (!_isLoop)
+                {
+                    int revereceRelEntitiy = _endBaskets.Get(endNodeIndex);
                     arc.ArcWorld.DelEntity(revereceRelEntitiy);
+                }
             }
             //_startBaskets.RemoveBasket(startEntityID);
         }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void DelEndAndDelRelEntities(int endEntityID, EcsArc arc)
         {
             foreach (var relEntityID in _endBaskets.GetBasketIterator(endEntityID))
             {
-                int startEntityID = _source.GetRelStart(relEntityID);
+                //int startEntityID = _source.GetRelStart(relEntityID);
+                //int startNodeIndex = _relNodesMapping[relEntityID].startNodeIndex;
+                //int revereceRelEntitiy = _startBaskets.Get(startNodeIndex);
+                //
+                ////_startBaskets.RemoveFromBasket(startEntityID, startNodeIndex);
+                //
+                //arc.ArcWorld.DelEntity(relEntityID);
+                //if(!_isLoop)
+                //{
+                //    arc.ArcWorld.DelEntity(revereceRelEntitiy);
+                //}
+
                 int startNodeIndex = _relNodesMapping[relEntityID].startNodeIndex;
-                int revereceRelEntitiy = _startBaskets.Get(startNodeIndex);
-
-                //_startBaskets.RemoveFromBasket(startEntityID, startNodeIndex);
-
                 arc.ArcWorld.DelEntity(relEntityID);
-                if(!_isLoop)
+                if (!_isLoop)
+                {
+                    int revereceRelEntitiy = _startBaskets.Get(startNodeIndex);
                     arc.ArcWorld.DelEntity(revereceRelEntitiy);
+                }
             }
             //_endBaskets.RemoveBasket(endEntityID);
         }
