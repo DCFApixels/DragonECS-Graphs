@@ -226,10 +226,10 @@ namespace DCFApixels.DragonECS.Relations.Utils
                 //    arc.ArcWorld.DelEntity(revereceRelEntitiy);
                 //}
 
-                //int endNodeIndex = _relNodesMapping[relEntityID].endNodeIndex;
                 arc.ArcWorld.DelEntity(relEntityID);
-                //if (!_isLoop)
+                //if (_isLoop)
                 //{
+                //    int endNodeIndex = _relNodesMapping[relEntityID].endNodeIndex;
                 //    int revereceRelEntitiy = _endBaskets.Get(endNodeIndex);
                 //    arc.ArcWorld.DelEntity(revereceRelEntitiy);
                 //}
@@ -253,10 +253,10 @@ namespace DCFApixels.DragonECS.Relations.Utils
                 //    arc.ArcWorld.DelEntity(revereceRelEntitiy);
                 //}
 
-                //int startNodeIndex = _relNodesMapping[relEntityID].startNodeIndex;
                 arc.ArcWorld.DelEntity(relEntityID);
-                //if (!_isLoop)
+                //if (_isLoop)
                 //{
+                //    int startNodeIndex = _relNodesMapping[relEntityID].startNodeIndex;
                 //    int revereceRelEntitiy = _startBaskets.Get(startNodeIndex);
                 //    arc.ArcWorld.DelEntity(revereceRelEntitiy);
                 //}
