@@ -119,18 +119,18 @@ namespace DCFApixels.DragonECS
             int newNodeIndex = TakeRecycledNode();
             if (basketInfo.count == 0)
             {
-                basketInfo.nodeIndex = newNodeIndex;
-                _nodes[newNodeIndex].Set(value, 0, 0);
+                //_nodes[newNodeIndex].Set(value, 0, 0);
+                _nodes[newNodeIndex].value = value;
             }
             else
             {
-                int nodeIndex = basketInfo.nodeIndex;
-                ref Node nextNode = ref _nodes[nodeIndex];
-
-                _nodes[newNodeIndex].Set(value, nextNode.prev, nodeIndex);
-                basketInfo.nodeIndex = newNodeIndex;
-                nextNode.prev = newNodeIndex;
+                //    int nextNodeIndex = basketInfo.nodeIndex;
+                //    //_nodes[newNodeIndex].Set(value, 0, nextNodeIndex);
+                //    _nodes[newNodeIndex].Set_Value_Next(value, nextNodeIndex);
+                //    //_nodes[nextNodeIndex].prev = newNodeIndex;
+                _nodes[newNodeIndex].Set_Value_Next(value, basketInfo.nodeIndex);
             }
+            basketInfo.nodeIndex = newNodeIndex;
             basketInfo.count++;
             return newNodeIndex;
         }
@@ -143,9 +143,9 @@ namespace DCFApixels.DragonECS
             {
                 Resize(_nodes.Length << 1);
             }
-            int node = _recycledListLast;
-            _recycledListLast = _nodes[node].prev;
-            return node;
+            int resultNode = _recycledListLast;
+            _recycledListLast = _nodes[resultNode].prev;
+            return resultNode;
         }
         //[MethodImpl(MethodImplOptions.AggressiveInlining)]
         //private void Separate(int leftNodeIndex, int rightNodeIndex)
@@ -253,6 +253,12 @@ namespace DCFApixels.DragonECS
                 this.value = value;
                 this.next = next;
                 this.prev = prev;
+            }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void Set_Value_Next(int value, int next)
+            {
+                this.value = value;
+                this.next = next;
             }
             public override string ToString() => $"node({prev}<>{next} v:{value})";
         }

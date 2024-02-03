@@ -153,23 +153,25 @@ namespace DCFApixels.DragonECS
         #endregion
 
         #region Add/Del
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Add(int startEntityID, int endEntityID, int relEntityID)
+        {
+            _relNodesMapping[relEntityID] = new RelNodesInfo(
+                _startBaskets.AddToBasket(startEntityID, relEntityID),
+                _endBaskets.AddToBasket(endEntityID, relEntityID));
+        }
         public void Add(int relEntityID)
         {
             var (startEntityID, endEntityID) = _source.GetRelationInfo(relEntityID);
-            ref RelNodesInfo arcInfo = ref _relNodesMapping[relEntityID];
-
-            arcInfo.startNodeIndex = _startBaskets.AddToBasket(startEntityID, relEntityID);
-            arcInfo.endNodeIndex = _endBaskets.AddToBasket(endEntityID, relEntityID);
+            _relNodesMapping[relEntityID] = new RelNodesInfo(
+                _startBaskets.AddToBasket(startEntityID, relEntityID),
+                _endBaskets.AddToBasket(endEntityID, relEntityID));
         }
         public void Del(int relEntityID)
         {
-            var (startEntityID, endEntityID) = _source.GetRelationInfo(relEntityID);
+            var (startEntityID, _) = _source.GetRelationInfo(relEntityID);
             ref RelNodesInfo relInfo = ref _relNodesMapping[relEntityID];
             _startBaskets.RemoveFromBasket(startEntityID, relInfo.startNodeIndex);
-            if (!_isLoop)
-            {
-                //_startBaskets.RemoveFromBasket(endEntityID, relInfo.endNodeIndex);
-            }
         }
         public void DelStart(int startEntityID)
         {
@@ -315,11 +317,16 @@ namespace DCFApixels.DragonECS
         #endregion
 
         #region ArcInfo
-        private struct RelNodesInfo : IEquatable<RelNodesInfo>
+        private readonly struct RelNodesInfo : IEquatable<RelNodesInfo>
         {
             public readonly static RelNodesInfo Empty = default;
-            public int startNodeIndex;
-            public int endNodeIndex;
+            public readonly int startNodeIndex;
+            public readonly int endNodeIndex;
+            public RelNodesInfo(int startNodeIndex, int endNodeIndex)
+            {
+                this.startNodeIndex = startNodeIndex;
+                this.endNodeIndex = endNodeIndex;
+            }
 
             #region Object
             public override bool Equals(object obj)

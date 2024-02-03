@@ -124,72 +124,24 @@ namespace DCFApixels.DragonECS
         #region New/Del
         public int NewRelation(int startEntityID, int endEntityID)
         {
-            //if (HasRelation(startEntityID, endEntityID))
-            //{
-            //    Throw.RelationAlreadyExists();
-            //}
-
             int relEntity = _arcWorld.NewEntity();
-            //_relationsMatrix.Add(startEntityID, endEntityID, relEntity);
-
             _relEntityInfos[relEntity] = new RelEntityInfo(startEntityID, endEntityID);
-            _relEntities.Add(relEntity);
-            _entitiesGraph.Add(relEntity);
+            _relEntities.AddUnchecked(relEntity);
+            _entitiesGraph.Add(startEntityID, endEntityID, relEntity);
             return relEntity;
         }
-        //public void DelRelation(int startEntityID, int endEntityID)
-        //{
-        //    if (_relationsMatrix.TryGetValue(startEntityID, endEntityID, out int relEntityID))
-        //    {
-        //        _arcWorld.DelEntity(relEntityID);
-        //    }
-        //    else
-        //    {
-        //        Throw.UndefinedRelationException();
-        //    }
-        //}
 
         public void DelRelation(int relEntityID)
         {
             _arcWorld.DelEntity(relEntityID);
         }
 
-        public void ClearRelation_Internal(int relEntityID)
+        private void ClearRelation_Internal(int relEntityID)
         {
             _relEntities.Remove(relEntityID);
             _entitiesGraph.Del(relEntityID);
             _relEntityInfos[relEntityID] = RelEntityInfo.Empty;
         }
-
-        //private void ClearRelation_Internal(int startEntityID, int endEntityID)
-        //{
-        //    if (_relationsMatrix.TryGetValue(startEntityID, endEntityID, out int relEntityID))
-        //    {
-        //        _relEntities.Remove(relEntityID);
-        //        _entitiesGraph.Del(relEntityID);
-        //        _relationsMatrix.Remove(startEntityID, endEntityID);
-        //        _relEntityInfos[relEntityID] = RelEntityInfo.Empty;
-        //    }
-        //}
-        #endregion
-
-        #region GetRelation/HasRelation
-        //public bool HasRelation(int startEntityID, int endEntityID)
-        //{
-        //    return _relationsMatrix.Contains(startEntityID, endEntityID);
-        //}
-        //public int GetRelation(int startEntityID, int endEntityID)
-        //{
-        //    if (!_relationsMatrix.TryGetValue(startEntityID, endEntityID, out int relEntityID))
-        //    {
-        //        Throw.UndefinedRelationException();
-        //    }
-        //    return relEntityID;
-        //}
-        //public bool TryGetRelation(int startEntityID, int endEntityID, out int relEntityID)
-        //{
-        //    return _relationsMatrix.TryGetValue(startEntityID, endEntityID, out relEntityID);
-        //}
         #endregion
 
         #region ArcEntityInfo
@@ -221,19 +173,6 @@ namespace DCFApixels.DragonECS
         {
             return GetRelationInfo(relEntityID).end;
         }
-
-        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //public int GetInversedRelation(int relEntityID)
-        //{
-        //    var (startEntityID, endEntityID) = GetRelationInfo(relEntityID);
-        //    return GetRelation(endEntityID, startEntityID);
-        //}
-        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //public bool TryGetInversedRelation(int relEntityID, out int inversedRelEntityID)
-        //{
-        //    var (startEntityID, endEntityID) = GetRelationInfo(relEntityID);
-        //    return TryGetRelation(endEntityID, startEntityID, out inversedRelEntityID);
-        //}
         #endregion
 
         #region Other
