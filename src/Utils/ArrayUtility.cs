@@ -165,9 +165,28 @@ namespace DCFApixels.DragonECS.Relations.Internal
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T* Resize<T>(void* oldPointer, int newCount) where T : unmanaged
         {
-            return (T*)(Marshal.ReAllocHGlobal(
+            return (T*)Marshal.ReAllocHGlobal(
                 new IntPtr(oldPointer),
-                new IntPtr(Marshal.SizeOf<T>(default) * newCount))).ToPointer();
+                new IntPtr(Marshal.SizeOf<T>(default) * newCount)).ToPointer();
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T* ResizeAndInit<T>(void* oldPointer, int oldSize, int newSize) where T : unmanaged
+        {
+            int sizeT = Marshal.SizeOf<T>(default);
+            T* result = (T*)Marshal.ReAllocHGlobal(
+                new IntPtr(oldPointer),
+                new IntPtr(sizeT * newSize)).ToPointer();
+            Init((byte*)result, sizeT * oldSize, sizeT * newSize);
+            return result;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void Init(byte* pointer, int startByteIndex, int endByteIndex)
+        {
+            for (int i = startByteIndex; i < endByteIndex; i++)
+            {
+                *(pointer + i) = 0;
+            }
         }
     }
 

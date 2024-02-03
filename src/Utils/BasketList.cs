@@ -82,6 +82,11 @@ namespace DCFApixels.DragonECS
             return _nodes[nodeIndex].value;
         }
 
+        private Node GetNode(int nodeIndex)
+        {
+            return _nodes[nodeIndex];
+        }
+
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void RemoveFromBasket(int basketIndex, int nodeIndex)
@@ -350,9 +355,56 @@ namespace DCFApixels.DragonECS
                     return result;
                 }
             }
+            public IEnumerable<Node> Recycled
+            {
+                get
+                {
+                    List<Node> result = new List<Node>();
+                    Node curNode = new Node();
+                    curNode.index = _basketList._recycledListLast;
+
+                    while (curNode.index != -1)
+                    {
+                        BasketList.Node x = _basketList.GetNode(curNode.index);
+                        curNode.prev = x.prev;
+                        curNode.next = x.next;
+
+                        result.Add(curNode);
+                        curNode = new Node();
+                        curNode.index = curNode.prev;
+                    }
+                    return result;
+                }
+            }
+            public IEnumerable<Node> AllNodes
+            {
+                get
+                {
+                    List<Node> result = new List<Node>();
+
+                    for (int i = 0; i < _basketList._nodes.Length; i++)
+                    {
+                        result.Add(new Node(_basketList._nodes[i].prev, i, _basketList._nodes[i].next));
+                    }
+                    return result;
+                }
+            }
             public DebuggerProxy(BasketList basketList)
             {
                 _basketList = basketList;
+            }
+            public struct Node
+            {
+                public int prev;
+                public int index;
+                public int next;
+                public Node(int prev, int index, int next)
+                {
+                    this.prev = prev;
+                    this.index = index;
+                    this.next = next;
+                }
+                public override string ToString() => $"node({prev}< {index} >{next})";
             }
             public struct BasketIteratorDebbugerProxy
             {
