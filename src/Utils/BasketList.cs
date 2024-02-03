@@ -1,9 +1,7 @@
-﻿using DCFApixels.DragonECS.Relations.Internal;
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -102,7 +100,7 @@ namespace DCFApixels.DragonECS
 
             Link(node.prev, nextNode);
             LinkToRecycled(nodeIndex, nodeIndex);
-            if(basketInfo.nodeIndex == nodeIndex)
+            if (basketInfo.nodeIndex == nodeIndex)
             {
                 basketInfo.nodeIndex = nextNode;
             }
@@ -192,10 +190,13 @@ namespace DCFApixels.DragonECS
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        private void UpBasketsSize(int minSize)
+        public void UpBasketsSize(int minSize)
         {
-            int newSize = GetHighBitNumber((uint)minSize) << 1;
-            Array.Resize(ref _baskets, newSize);
+            if (minSize > _baskets.Length)
+            {
+                int newSize = 1 << (GetHighBitNumber((uint)minSize - 1) + 1);
+                Array.Resize(ref _baskets, newSize);
+            }
         }
         private static int GetHighBitNumber(uint bits)
         {
@@ -271,10 +272,6 @@ namespace DCFApixels.DragonECS
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public BasketIterator GetBasketIterator(int basketIndex)
         {
-            if (_baskets.Length <= basketIndex)
-            {
-                UpBasketsSize(basketIndex);
-            }
             return new BasketIterator(this, basketIndex);
         }
         public readonly struct BasketIterator : IEnumerable<int>

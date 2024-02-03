@@ -1,0 +1,119 @@
+﻿using DCFApixels.DragonECS.Utils;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Runtime.CompilerServices;
+
+namespace DCFApixels.DragonECS.Relations.Internal
+{
+    [DebuggerTypeProxy(typeof(UnsafeArray<>.DebuggerProxy))]
+    internal unsafe struct UnsafeArray<T> : IDisposable, IEnumerable<T>
+        where T : unmanaged
+    {
+        internal T* ptr;
+        internal int Length;
+
+        public ref T this[int index]
+        {
+            get { return ref ptr[index]; }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public UnsafeArray(int length)
+        {
+            UnmanagedArrayUtility.New(out ptr, length);
+            Length = length;
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public UnsafeArray(int length, bool isInit)
+        {
+            UnmanagedArrayUtility.NewAndInit(out ptr, length);
+            Length = length;
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private UnsafeArray(T* ptr, int length)
+        {
+            this.ptr = ptr;
+            Length = length;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public UnsafeArray<T> Clone()
+        {
+            return new UnsafeArray<T>(UnmanagedArrayUtility.Clone(ptr, Length), Length);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Dispose()
+        {
+            UnmanagedArrayUtility.Free(ref ptr, ref Length);
+        }
+        public override string ToString()
+        {
+            T* ptr = this.ptr;
+            return CollectionUtility.AutoToString(EnumerableInt.Range(0, Length).Select(i => ptr[i]), "ua");
+        }
+
+        public static void Resize(ref UnsafeArray<T> array, int newSize)
+        {
+            array.ptr = UnmanagedArrayUtility.Resize<T>(array.ptr, newSize);
+            array.Length = newSize;
+        }
+        public static UnsafeArray<T> Resize(UnsafeArray<T> array, int newSize)
+        {
+            return new UnsafeArray<T>(UnmanagedArrayUtility.Resize<T>(array.ptr, newSize), newSize);
+        }
+
+        IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Enumerator GetEnumerator() => new Enumerator(ptr, Length);
+        public struct Enumerator : IEnumerator<T>
+        {
+            private readonly T* _ptr;
+            private readonly int _length;
+            private int _index;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public Enumerator(T* ptr, int length)
+            {
+                _ptr = ptr;
+                _length = length;
+                _index = -1;
+            }
+            public T Current
+            {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get => _ptr[_index];
+            }
+            object IEnumerator.Current => Current;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public bool MoveNext() => ++_index < _length;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void Reset() { }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void Dispose() { }
+        }
+
+        internal class DebuggerProxy
+        {
+            public T[] elements;
+            public int length;
+            public DebuggerProxy(UnsafeArray<T> instance)
+            {
+                elements = EnumerableInt.Range(0, instance.Length).Select(i => instance.ptr[i]).ToArray();
+                length = instance.Length;
+            }
+        }
+    }
+
+    internal static class UnsafeArrayExtentions
+    {
+        public static void Resize<T>(ref UnsafeArray<T> self, int newSize)
+            where T : unmanaged
+        {
+            UnsafeArray<T>.Resize(ref self, newSize);
+        }
+    }
+}

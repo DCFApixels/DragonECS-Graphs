@@ -1,6 +1,7 @@
 ﻿//SparseArray64. Analogous to Dictionary<long, T>, but faster.
 //Benchmark result of indexer.get speed test with 300 elements:
 //[Dictinary: 6.705us] [SparseArray64: 2.512us].
+using DCFApixels.DragonECS.Relations.Internal;
 using System;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
@@ -9,14 +10,15 @@ using System.Runtime.InteropServices;
 
 namespace DCFApixels.DragonECS.Relations.Utils
 {
-    internal class SparseArray64<TValue>
+    internal unsafe class SparseArray64<TValue>
+        where TValue : unmanaged
     {
         public const int MIN_CAPACITY_BITS_OFFSET = 4;
         public const int MIN_CAPACITY = 1 << MIN_CAPACITY_BITS_OFFSET;
         private const int EMPTY = -1;
 
-        private int[] _buckets = Array.Empty<int>();
-        private Entry[] _entries = Array.Empty<Entry>();
+        private UnsafeArray<int> _buckets;
+        private UnsafeArray<Entry> _entries;
 
         private int _count;
 
@@ -28,26 +30,45 @@ namespace DCFApixels.DragonECS.Relations.Utils
         #region Properties
         public TValue this[long keyX, long keyY]
         {
-            get => _entries[FindEntry(keyX + (keyY << 32))].value;
-            set => Insert(keyX + (keyY << 32), value);
+            get
+            {
+                //TODO Проверить необходимость проверки на Null
+                return _entries.ptr[FindEntry(keyX + (keyY << 32))].value;
+            }
+            set
+            {
+                Insert(keyX + (keyY << 32), value);
+            }
         }
         public TValue this[long key]
         {
-            get => _entries[FindEntry(key)].value;
-            set => Insert(key, value);
+            get
+            {
+                //TODO Проверить необходимость проверки на Null
+                return _entries.ptr[FindEntry(key)].value;
+            }
+            set
+            {
+                Insert(key, value);
+            }
         }
 
-        public int Count => _count;
+        public int Count
+        {
+            get { return _count; }
+        }
         #endregion
 
         #region Constructors
         public SparseArray64(int minCapacity = MIN_CAPACITY)
         {
             minCapacity = NormalizeCapacity(minCapacity);
-            _buckets = new int[minCapacity];
+            _buckets = new UnsafeArray<int>(minCapacity);
             for (int i = 0; i < minCapacity; i++)
+            {
                 _buckets[i] = EMPTY;
-            _entries = new Entry[minCapacity];
+            }
+            _entries = new UnsafeArray<Entry>(minCapacity);
             _modBitMask = (minCapacity - 1) & 0x7FFFFFFF;
         }
         #endregion
@@ -148,7 +169,7 @@ namespace DCFApixels.DragonECS.Relations.Utils
                 value = default;
                 return false;
             }
-            value = _entries[index].value;
+            value = _entries.ptr[index].value;
             return true;
         }
         public bool TryGetValue(long keyX, long keyY, out TValue value)
@@ -159,7 +180,7 @@ namespace DCFApixels.DragonECS.Relations.Utils
                 value = default;
                 return false;
             }
-            value = _entries[index].value;
+            value = _entries.ptr[index].value;
             return true;
         }
         #endregion
@@ -184,7 +205,10 @@ namespace DCFApixels.DragonECS.Relations.Utils
                 {
                     _buckets[i] = -1;
                 }
-                Array.Clear(_entries, 0, _count);
+                for (int i = 0; i < _count; i++)
+                {
+                    _entries[i] = default;
+                }
                 _count = 0;
             }
         }
@@ -197,12 +221,15 @@ namespace DCFApixels.DragonECS.Relations.Utils
             _modBitMask = (newSize - 1) & 0x7FFFFFFF;
 
             Contract.Assert(newSize >= _entries.Length);
-            int[] newBuckets = new int[newSize];
+            UnsafeArray<int> newBuckets = new UnsafeArray<int>(newSize);
             for (int i = 0; i < newBuckets.Length; i++)
                 newBuckets[i] = EMPTY;
 
-            Entry[] newEntries = new Entry[newSize];
-            Array.Copy(_entries, 0, newEntries, 0, _count);
+            UnsafeArray<Entry> newEntries = UnsafeArray<Entry>.Resize(_entries, newSize);
+            //UnsafeArray<Entry> newEntries = new UnsafeArray<Entry>(newSize);
+            //Array.Copy(_entries, 0, newEntries, 0, _count);
+
+
             for (int i = 0; i < _count; i++)
             {
                 if (newEntries[i].hashKey >= 0)

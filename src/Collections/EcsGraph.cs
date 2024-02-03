@@ -2,13 +2,13 @@
 using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
-using static DCFApixels.DragonECS.Relations.Utils.EcsJoin;
+using static DCFApixels.DragonECS.EcsGraph;
 
-namespace DCFApixels.DragonECS.Relations.Utils
+namespace DCFApixels.DragonECS
 {
-    public readonly ref struct EcsReadonlyJoin
+    public readonly ref struct EcsReadonlyGraph
     {
-        private readonly EcsJoin _source;
+        private readonly EcsGraph _source;
 
         #region Properties
         public bool IsNull => _source == null;
@@ -51,7 +51,7 @@ namespace DCFApixels.DragonECS.Relations.Utils
 
         #region Constructors
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public EcsReadonlyJoin(EcsJoin source) { _source = source; }
+        public EcsReadonlyGraph(EcsGraph source) { _source = source; }
         #endregion
 
         #region Methods
@@ -67,7 +67,7 @@ namespace DCFApixels.DragonECS.Relations.Utils
 
         #region Internal
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal EcsJoin GetSource_Internal() => _source;
+        internal EcsGraph GetSource_Internal() => _source;
         #endregion
 
         #region Other
@@ -86,20 +86,20 @@ namespace DCFApixels.DragonECS.Relations.Utils
         #endregion
     }
     //[DebuggerTypeProxy(typeof(DebuggerProxy))]
-    public class EcsJoin
+    public class EcsGraph
     {
         private readonly EcsArc _source;
         private readonly bool _isLoop;
 
         private readonly BasketList _startBaskets;
         private readonly BasketList _endBaskets;
-        private readonly RelNodesInfo[] _relNodesMapping;
+        private RelNodesInfo[] _relNodesMapping;
 
         #region Properties
-        public EcsReadonlyJoin Readonly
+        public EcsReadonlyGraph Readonly
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get { return new EcsReadonlyJoin(this); }
+            get { return new EcsReadonlyGraph(this); }
         }
         public EcsArc Arc
         {
@@ -140,20 +140,12 @@ namespace DCFApixels.DragonECS.Relations.Utils
         #endregion
 
         #region Constructors
-        public EcsJoin(EcsArc arc)
+        public EcsGraph(EcsArc arc)
         {
             _source = arc;
             _isLoop = arc.IsLoop;
 
             _startBaskets = new BasketList();
-            //if (_isLoop)
-            //{
-            //    _endBaskets = _startBaskets;
-            //}
-            //else
-            //{
-            //    _endBaskets = new BasketList();
-            //}
             _endBaskets = new BasketList();
 
             _relNodesMapping = new RelNodesInfo[arc.ArcWorld.Capacity];
@@ -167,14 +159,7 @@ namespace DCFApixels.DragonECS.Relations.Utils
             ref RelNodesInfo arcInfo = ref _relNodesMapping[relEntityID];
 
             arcInfo.startNodeIndex = _startBaskets.AddToBasket(startEntityID, relEntityID);
-            //if (_isLoop)
-            //{
-            //    arcInfo.endNodeIndex = arcInfo.startNodeIndex;
-            //}
-            //else
-            //{
             arcInfo.endNodeIndex = _endBaskets.AddToBasket(endEntityID, relEntityID);
-            //}
         }
         public void Del(int relEntityID)
         {
@@ -214,59 +199,21 @@ namespace DCFApixels.DragonECS.Relations.Utils
 
             foreach (var relEntityID in _startBaskets.GetBasketIterator(startEntityID))
             {
-                //int endEntityID = _source.GetRelEnd(relEntityID);
-                //int endNodeIndex = _relNodesMapping[relEntityID].endNodeIndex;
-                //int revereceRelEntitiy = _endBaskets.Get(endNodeIndex);
-                //
-                ////_endBaskets.RemoveFromBasket(endEntityID, endNodeIndex);
-                //
-                //arc.ArcWorld.DelEntity(relEntityID);
-                //if(!_isLoop)
-                //{
-                //    arc.ArcWorld.DelEntity(revereceRelEntitiy);
-                //}
-
-                arc.ArcWorld.DelEntity(relEntityID);
-                //if (_isLoop)
-                //{
-                //    int endNodeIndex = _relNodesMapping[relEntityID].endNodeIndex;
-                //    int revereceRelEntitiy = _endBaskets.Get(endNodeIndex);
-                //    arc.ArcWorld.DelEntity(revereceRelEntitiy);
-                //}
+                arc.ArcWorld.TryDelEntity(relEntityID);
             }
-            //_startBaskets.RemoveBasket(startEntityID);
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void DelEndAndDelRelEntities(int endEntityID, EcsArc arc)
         {
             foreach (var relEntityID in _endBaskets.GetBasketIterator(endEntityID))
             {
-                //int startEntityID = _source.GetRelStart(relEntityID);
-                //int startNodeIndex = _relNodesMapping[relEntityID].startNodeIndex;
-                //int revereceRelEntitiy = _startBaskets.Get(startNodeIndex);
-                //
-                ////_startBaskets.RemoveFromBasket(startEntityID, startNodeIndex);
-                //
-                //arc.ArcWorld.DelEntity(relEntityID);
-                //if(!_isLoop)
-                //{
-                //    arc.ArcWorld.DelEntity(revereceRelEntitiy);
-                //}
-
-                arc.ArcWorld.DelEntity(relEntityID);
-                //if (_isLoop)
-                //{
-                //    int startNodeIndex = _relNodesMapping[relEntityID].startNodeIndex;
-                //    int revereceRelEntitiy = _startBaskets.Get(startNodeIndex);
-                //    arc.ArcWorld.DelEntity(revereceRelEntitiy);
-                //}
+                arc.ArcWorld.TryDelEntity(relEntityID);
             }
-            //_endBaskets.RemoveBasket(endEntityID);
         }
         public struct FriendEcsArc
         {
-            private EcsJoin _join;
-            public FriendEcsArc(EcsArc arc, EcsJoin join)
+            private EcsGraph _join;
+            public FriendEcsArc(EcsArc arc, EcsGraph join)
             {
                 if (arc.IsInit_Internal != false)
                 {
@@ -403,7 +350,22 @@ namespace DCFApixels.DragonECS.Relations.Utils
 
         #region Operators
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static implicit operator EcsReadonlyJoin(EcsJoin a) => a.Readonly;
+        public static implicit operator EcsReadonlyGraph(EcsGraph a) => a.Readonly;
+        #endregion
+
+        #region UpSize
+        public void UpArcSize(int minSize)
+        {
+            Array.Resize(ref _relNodesMapping, minSize);
+        }
+        public void UpStartSize(int minSize)
+        {
+            _startBaskets.UpBasketsSize(minSize);
+        }
+        public void UpEndSize(int minSize)
+        {
+            _endBaskets.UpBasketsSize(minSize);
+        }
         #endregion
 
         #region DebuggerProxy

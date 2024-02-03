@@ -26,6 +26,11 @@ namespace DCFApixels.DragonECS.Relations.Internal
         {
             throw new EcsRelationException();
         }
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        internal static void RelationAlreadyExists()
+        {
+            throw new EcsRelationException("This relation already exists.");
+        }
     }
 }
 

@@ -6,7 +6,7 @@ namespace DCFApixels.DragonECS
 {
     public static class EcsWorldGraph
     {
-        private static readonly SparseArray64<EcsArc> _matrix = new SparseArray64<EcsArc>(4);
+        private static readonly SparseArray<EcsArc> _matrix = new SparseArray<EcsArc>(4);
         private static EcsArc[] _arcsMapping = new EcsArc[4];
 
         #region Register/Unregister
@@ -103,7 +103,7 @@ namespace DCFApixels.DragonECS
         }
 
 
-        public static EcsArc SetLoopArcAuto<TWorld>(this TWorld self, out EcsLoopArcWorld<TWorld> arcWorld)
+        public static EcsArc SetLoopArcAuto<TWorld>(this TWorld self, out EcsLoopArcWorld<TWorld> arcWorld, IEcsWorldConfig config = null)
             where TWorld : EcsWorld
         {
             if (self == null)
@@ -114,10 +114,10 @@ namespace DCFApixels.DragonECS
             {
                 EcsDebug.PrintWarning($"{nameof(TWorld)} is not {self.GetType().Name}");
             }
-            arcWorld = new EcsLoopArcWorld<TWorld>();
+            arcWorld = new EcsLoopArcWorld<TWorld>(config);
             return Register(self, self, arcWorld);
         }
-        public static EcsArc SetArcAuto<TStartWorld, TEndWorld>(this TStartWorld start, TEndWorld end, out EcsArcWorld<TStartWorld, TEndWorld> arcWorld)
+        public static EcsArc SetArcAuto<TStartWorld, TEndWorld>(this TStartWorld start, TEndWorld end, out EcsArcWorld<TStartWorld, TEndWorld> arcWorld, IEcsWorldConfig config = null)
             where TStartWorld : EcsWorld
             where TEndWorld : EcsWorld
         {
@@ -129,19 +129,19 @@ namespace DCFApixels.DragonECS
             {
                 EcsDebug.PrintWarning($"{nameof(TStartWorld)} is not {start.GetType().Name} or {nameof(TEndWorld)} is not {end.GetType().Name}");
             }
-            arcWorld = new EcsArcWorld<TStartWorld, TEndWorld>();
+            arcWorld = new EcsArcWorld<TStartWorld, TEndWorld>(config);
             return Register(start, end, arcWorld);
         }
-        public static EcsArc SetLoopArcAuto<TWorld>(this TWorld self)
+        public static EcsArc SetLoopArcAuto<TWorld>(this TWorld self, IEcsWorldConfig config = null)
             where TWorld : EcsWorld
         {
-            return SetLoopArcAuto(self, out _);
+            return SetLoopArcAuto(self, out _, config);
         }
-        public static EcsArc SetArcAuto<TStartWorld, TEndWorld>(this TStartWorld start, TEndWorld end)
+        public static EcsArc SetArcAuto<TStartWorld, TEndWorld>(this TStartWorld start, TEndWorld end, IEcsWorldConfig config = null)
             where TStartWorld : EcsWorld
             where TEndWorld : EcsWorld
         {
-            return SetArcAuto(start, end, out _);
+            return SetArcAuto(start, end, out _, config);
         }
 
         public static EcsArc SetLoopArc(this EcsWorld self, EcsArcWorld arc) => SetArc(self, self, arc);
