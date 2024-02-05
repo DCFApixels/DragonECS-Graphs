@@ -134,7 +134,7 @@ namespace DCFApixels.DragonECS
 
             _relEntityInfos[relEntity] = new RelEntityInfo(startEntityID, endEntityID);
             _relEntities.Add(relEntity);
-            _entitiesGraph.Add(relEntity);
+            _entitiesGraph.Add(startEntityID, endEntityID, relEntity);
             return relEntity;
         }
         //public void DelRelation(int startEntityID, int endEntityID)
