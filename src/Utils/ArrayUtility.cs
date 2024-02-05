@@ -104,17 +104,31 @@ namespace DCFApixels.DragonECS.Relations.Internal
     }
     internal static unsafe class UnmanagedArrayUtility
     {
+        public static readonly int PtrSize = sizeof(IntPtr);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T** NewPointersArray<T>(int capacity) where T : unmanaged
+        {
+            return (T**)Marshal.AllocHGlobal(capacity * PtrSize).ToPointer();
+        }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T* New<T>(int capacity) where T : unmanaged
         {
             return (T*)Marshal.AllocHGlobal(Marshal.SizeOf<T>() * capacity).ToPointer();
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void New<T>(out T* ptr, int capacity) where T : unmanaged
+        public static T** NewAndInitPointersArray<T>(int capacity) where T : unmanaged
         {
-            ptr = (T*)Marshal.AllocHGlobal(Marshal.SizeOf<T>(default) * capacity).ToPointer();
-        }
+            int newSize = PtrSize * capacity;
+            T** newPointer = (T**)Marshal.AllocHGlobal(newSize).ToPointer();
 
+            for (int i = 0; i < newSize; i++)
+            {
+                *(newPointer + i) = null;
+            }
+
+            return newPointer;
+        }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T* NewAndInit<T>(int capacity) where T : unmanaged
         {
@@ -122,26 +136,25 @@ namespace DCFApixels.DragonECS.Relations.Internal
             byte* newPointer = (byte*)Marshal.AllocHGlobal(newSize).ToPointer();
 
             for (int i = 0; i < newSize; i++)
+            {
                 *(newPointer + i) = 0;
+            }
 
             return (T*)newPointer;
         }
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void NewAndInit<T>(out T* ptr, int capacity) where T : unmanaged
-        {
-            int newSize = Marshal.SizeOf(typeof(T)) * capacity;
-            byte* newPointer = (byte*)Marshal.AllocHGlobal(newSize).ToPointer();
 
-            for (int i = 0; i < newSize; i++)
-                *(newPointer + i) = 0;
-
-            ptr = (T*)newPointer;
-        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void Free(void* pointer)
         {
             Marshal.FreeHGlobal(new IntPtr(pointer));
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void FreePointersArray<T>(ref T** pointer, ref int length) where T : unmanaged
+        {
+            Marshal.FreeHGlobal(new IntPtr(pointer));
+            pointer = null;
+            length = 0;
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void Free<T>(ref T* pointer, ref int length) where T : unmanaged
@@ -151,6 +164,16 @@ namespace DCFApixels.DragonECS.Relations.Internal
             length = 0;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T** ClonePointersArray<T>(T** sourcePtr, int length) where T : unmanaged
+        {
+            T** clone = NewPointersArray<T>(length);
+            for (int i = 0; i < length; i++)
+            {
+                clone[i] = sourcePtr[i];
+            }
+            return clone;
+        }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T* Clone<T>(T* sourcePtr, int length) where T : unmanaged
         {
@@ -163,12 +186,43 @@ namespace DCFApixels.DragonECS.Relations.Internal
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T** ResizePointersArray<T>(T** oldPointer, int newCount) where T : unmanaged
+        {
+            return (T**)Marshal.ReAllocHGlobal(
+                new IntPtr(oldPointer),
+                new IntPtr(PtrSize * newCount)).ToPointer();
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T* Resize<T>(void* oldPointer, int newCount) where T : unmanaged
         {
             return (T*)Marshal.ReAllocHGlobal(
                 new IntPtr(oldPointer),
                 new IntPtr(Marshal.SizeOf<T>(default) * newCount)).ToPointer();
         }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T** ResizeAndInitPointersArray<T>(T** oldPointer, int oldSize, int newSize) where T : unmanaged
+        {
+            int newByteSize = PtrSize * newSize;
+            T** result = (T**)Marshal.ReAllocHGlobal((IntPtr)(oldPointer), newByteSize);
+
+            for (int i = oldSize; i < newSize; i++)
+            {
+                result[i] = null;
+            }
+            return result;
+        }
+        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
+        //public static void* ResizeAndInitPointersArray(void* oldPointer, int oldSize, int newSize)
+        //{
+        //    int newByteSize = PtrSize * newSize;
+        //    void** result = (void**)Marshal.ReAllocHGlobal((IntPtr)(oldPointer), newByteSize);
+        //
+        //    for (int i = oldSize; i < newSize; i++)
+        //    {
+        //        result[i] = null;
+        //    }
+        //    return result;
+        //}
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T* ResizeAndInit<T>(void* oldPointer, int oldSize, int newSize) where T : unmanaged
         {
@@ -179,6 +233,8 @@ namespace DCFApixels.DragonECS.Relations.Internal
             Init((byte*)result, sizeT * oldSize, sizeT * newSize);
             return result;
         }
+
+
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void Init(byte* pointer, int startByteIndex, int endByteIndex)

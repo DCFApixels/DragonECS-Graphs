@@ -169,9 +169,10 @@ namespace DCFApixels.DragonECS
         }
         public void Del(int relEntityID)
         {
-            var (startEntityID, _) = _source.GetRelationInfo(relEntityID);
+            var (startEntityID, endEntityID) = _source.GetRelationInfo(relEntityID);
             ref RelNodesInfo relInfo = ref _relNodesMapping[relEntityID];
-            _startBaskets.RemoveFromBasket(startEntityID, relInfo.startNodeIndex);
+            _startBaskets.RemoveNextNodeFromBasket(startEntityID, relInfo.startNodeIndex);
+            _endBaskets.RemoveNextNodeFromBasket(endEntityID, relInfo.endNodeIndex);
         }
         public void DelStart(int startEntityID)
         {
@@ -179,7 +180,7 @@ namespace DCFApixels.DragonECS
             {
                 var endEntityID = _source.GetRelEnd(relEntityID);
                 ref RelNodesInfo relInfo = ref _relNodesMapping[relEntityID];
-                _endBaskets.RemoveFromBasket(endEntityID, relInfo.startNodeIndex);
+                _endBaskets.RemoveNextNodeFromBasket(endEntityID, relInfo.startNodeIndex);
             }
             _startBaskets.RemoveBasket(startEntityID);
         }
@@ -189,7 +190,7 @@ namespace DCFApixels.DragonECS
             {
                 var startEntityID = _source.GetRelStart(relEntityID);
                 ref RelNodesInfo relInfo = ref _relNodesMapping[relEntityID];
-                _startBaskets.RemoveFromBasket(startEntityID, relInfo.endNodeIndex);
+                _startBaskets.RemoveNextNodeFromBasket(startEntityID, relInfo.endNodeIndex);
             }
             _endBaskets.RemoveBasket(endEntityID);
         }
@@ -198,7 +199,6 @@ namespace DCFApixels.DragonECS
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void DelStartAndDelRelEntities(int startEntityID, EcsArc arc)
         {
-
             foreach (var relEntityID in _startBaskets.GetBasketIterator(startEntityID))
             {
                 arc.ArcWorld.TryDelEntity(relEntityID);
@@ -214,25 +214,29 @@ namespace DCFApixels.DragonECS
         }
         public struct FriendEcsArc
         {
-            private EcsGraph _join;
+            public readonly EcsGraph join;
             public FriendEcsArc(EcsArc arc, EcsGraph join)
             {
                 if (arc.IsInit_Internal != false)
                 {
                     Throw.UndefinedException();
                 }
-                _join = join;
+                if(join == null)
+                {
+                    Throw.ArgumentNull();
+                }
+                this.join = join;
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void DelStartAndDelRelEntities(int startEntityID, EcsArc arc)
             {
-                _join.DelStartAndDelRelEntities(startEntityID, arc);
+                join.DelStartAndDelRelEntities(startEntityID, arc);
             }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void DelEndAndDelRelEntities(int endEntityID, EcsArc arc)
             {
-                _join.DelEndAndDelRelEntities(endEntityID, arc);
+                join.DelEndAndDelRelEntities(endEntityID, arc);
             }
         }
         #endregion
@@ -244,11 +248,11 @@ namespace DCFApixels.DragonECS
         }
         public bool HasStart(int startEntityID)
         {
-            return _startBaskets.GetBasketNodesCount(startEntityID) > 0;
+            return _startBaskets.HasBasket(startEntityID);
         }
         public bool HasEnd(int endEntityID)
         {
-            return _endBaskets.GetBasketNodesCount(endEntityID) > 0;
+            return _endBaskets.HasBasket(endEntityID);
         }
         #endregion
 

@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace DCFApixels.DragonECS.Relations.Internal
 {
@@ -32,19 +33,27 @@ namespace DCFApixels.DragonECS.Relations.Internal
 
         public ref T this[int index]
         {
-            get { return ref ptr[index]; }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get
+            {
+#if DEBUG
+                if (index < 0 || index >= Length)
+                    Throw.ArgumentOutOfRange();
+#endif
+                return ref ptr[index];
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public UnsafeArray(int length)
         {
-            UnmanagedArrayUtility.New(out ptr, length);
+            ptr = UnmanagedArrayUtility.New<T>(length);
             Length = length;
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public UnsafeArray(int length, bool isInit)
         {
-            UnmanagedArrayUtility.NewAndInit(out ptr, length);
+            ptr = UnmanagedArrayUtility.NewAndInit<T>(length);
             Length = length;
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -67,8 +76,7 @@ namespace DCFApixels.DragonECS.Relations.Internal
         }
         public override string ToString()
         {
-            T* ptr = this.ptr;
-            return CollectionUtility.AutoToString(EnumerableInt.Range(0, Length).Select(i => ptr[i]), "ua");
+            return $"ua({Length}) ({string.Join(", ", this.ToArray())})";
         }
 
         public static void Resize(ref UnsafeArray<T> array, int newSize)
@@ -113,12 +121,18 @@ namespace DCFApixels.DragonECS.Relations.Internal
 
         internal class DebuggerProxy
         {
+            public void* ptr;
             public T[] elements;
             public int length;
             public DebuggerProxy(UnsafeArray<T> instance)
             {
-                elements = EnumerableInt.Range(0, instance.Length).Select(i => instance.ptr[i]).ToArray();
+                ptr = instance.ptr;
                 length = instance.Length;
+                elements = new T[length];
+                for (int i = 0; i < length; i++)
+                {
+                    elements[i] = instance[i];
+                }
             }
         }
     }
