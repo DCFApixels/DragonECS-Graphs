@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
-using System.Runtime.Serialization;
 
 namespace DCFApixels.DragonECS.Relations.Internal
 {
@@ -42,6 +41,5 @@ namespace DCFApixels.DragonECS
         public EcsRelationException() { }
         public EcsRelationException(string message) : base(EcsConsts.EXCEPTION_MESSAGE_PREFIX + message) { }
         public EcsRelationException(string message, Exception inner) : base(EcsConsts.EXCEPTION_MESSAGE_PREFIX + message, inner) { }
-        protected EcsRelationException(SerializationInfo info, StreamingContext context) : base(info, context) { }
     }
 }

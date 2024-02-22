@@ -1,8 +1,6 @@
 ﻿using DCFApixels.DragonECS.Relations.Internal;
-using DCFApixels.DragonECS.Relations.Utils;
 using System;
 using System.Runtime.CompilerServices;
-using System.Xml;
 
 namespace DCFApixels.DragonECS
 {
@@ -20,11 +18,6 @@ namespace DCFApixels.DragonECS
         private readonly ArcWorldHandler _arcWorldHandler;
         private readonly EndWorldHandler _endWorldHandler;
         private readonly LoopWorldHandler _loopWorldHandler;
-
-        //private readonly SparseArray64<int> _relationsMatrix = new SparseArray64<int>();
-
-        private EcsGraph _entitiesGraph;
-        private EcsGraph.FriendEcsArc _entitiesGraphFriend;
 
         private EcsGroup _relEntities;
         private RelEntityInfo[] _relEntityInfos; //N * (N - 1) / 2
@@ -63,11 +56,6 @@ namespace DCFApixels.DragonECS
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return _relEntities.Readonly; }
         }
-        public EcsReadonlyGraph EntitiesGraph
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get { return _entitiesGraph.Readonly; }
-        }
         public bool IsLoop
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -88,9 +76,6 @@ namespace DCFApixels.DragonECS
 
 
             _relEntities = EcsGroup.New(_arcWorld);
-            _entitiesGraph = new EcsGraph(this);
-
-            _entitiesGraphFriend = new EcsGraph.FriendEcsArc(this, _entitiesGraph);
 
             _arcWorldHandler = new ArcWorldHandler(this);
             if (_isLoop)
@@ -124,30 +109,11 @@ namespace DCFApixels.DragonECS
         #region New/Del
         public int NewRelation(int startEntityID, int endEntityID)
         {
-            //if (HasRelation(startEntityID, endEntityID))
-            //{
-            //    Throw.RelationAlreadyExists();
-            //}
-
             int relEntity = _arcWorld.NewEntity();
-            //_relationsMatrix.Add(startEntityID, endEntityID, relEntity);
-
             _relEntityInfos[relEntity] = new RelEntityInfo(startEntityID, endEntityID);
             _relEntities.Add(relEntity);
-            _entitiesGraph.Add(startEntityID, endEntityID, relEntity);
             return relEntity;
         }
-        //public void DelRelation(int startEntityID, int endEntityID)
-        //{
-        //    if (_relationsMatrix.TryGetValue(startEntityID, endEntityID, out int relEntityID))
-        //    {
-        //        _arcWorld.DelEntity(relEntityID);
-        //    }
-        //    else
-        //    {
-        //        Throw.UndefinedRelationException();
-        //    }
-        //}
 
         public void DelRelation(int relEntityID)
         {
@@ -157,39 +123,8 @@ namespace DCFApixels.DragonECS
         public void ClearRelation_Internal(int relEntityID)
         {
             _relEntities.Remove(relEntityID);
-            _entitiesGraph.Del(relEntityID);
             _relEntityInfos[relEntityID] = RelEntityInfo.Empty;
         }
-
-        //private void ClearRelation_Internal(int startEntityID, int endEntityID)
-        //{
-        //    if (_relationsMatrix.TryGetValue(startEntityID, endEntityID, out int relEntityID))
-        //    {
-        //        _relEntities.Remove(relEntityID);
-        //        _entitiesGraph.Del(relEntityID);
-        //        _relationsMatrix.Remove(startEntityID, endEntityID);
-        //        _relEntityInfos[relEntityID] = RelEntityInfo.Empty;
-        //    }
-        //}
-        #endregion
-
-        #region GetRelation/HasRelation
-        //public bool HasRelation(int startEntityID, int endEntityID)
-        //{
-        //    return _relationsMatrix.Contains(startEntityID, endEntityID);
-        //}
-        //public int GetRelation(int startEntityID, int endEntityID)
-        //{
-        //    if (!_relationsMatrix.TryGetValue(startEntityID, endEntityID, out int relEntityID))
-        //    {
-        //        Throw.UndefinedRelationException();
-        //    }
-        //    return relEntityID;
-        //}
-        //public bool TryGetRelation(int startEntityID, int endEntityID, out int relEntityID)
-        //{
-        //    return _relationsMatrix.TryGetValue(startEntityID, endEntityID, out relEntityID);
-        //}
         #endregion
 
         #region ArcEntityInfo
@@ -221,19 +156,6 @@ namespace DCFApixels.DragonECS
         {
             return GetRelationInfo(relEntityID).end;
         }
-
-        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //public int GetInversedRelation(int relEntityID)
-        //{
-        //    var (startEntityID, endEntityID) = GetRelationInfo(relEntityID);
-        //    return GetRelation(endEntityID, startEntityID);
-        //}
-        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //public bool TryGetInversedRelation(int relEntityID, out int inversedRelEntityID)
-        //{
-        //    var (startEntityID, endEntityID) = GetRelationInfo(relEntityID);
-        //    return TryGetRelation(endEntityID, startEntityID, out inversedRelEntityID);
-        //}
         #endregion
 
         #region Other
@@ -275,7 +197,6 @@ namespace DCFApixels.DragonECS
             public void OnWorldResize(int arcWorldNewSize)
             {
                 Array.Resize(ref _arc._relEntityInfos, arcWorldNewSize);
-                _arc._entitiesGraph.UpArcSize(arcWorldNewSize);
             }
             #endregion
         }
@@ -295,17 +216,10 @@ namespace DCFApixels.DragonECS
             #region Callbacks
             public void OnReleaseDelEntityBuffer(ReadOnlySpan<int> startEntityBuffer)
             {
-                foreach (var startEntityID in startEntityBuffer)
-                {
-                    _arc._entitiesGraphFriend.DelStartAndDelRelEntities(startEntityID, _arc);
-                }
                 _arc._arcWorld.ReleaseDelEntityBufferAll();
             }
             public void OnWorldDestroy() { }
-            public void OnWorldResize(int startWorldNewSize)
-            {
-                _arc._entitiesGraph.UpStartSize(startWorldNewSize);
-            }
+            public void OnWorldResize(int startWorldNewSize) { }
             #endregion
         }
         private class EndWorldHandler : IEcsWorldEventListener
@@ -324,17 +238,10 @@ namespace DCFApixels.DragonECS
             #region Callbacks
             public void OnReleaseDelEntityBuffer(ReadOnlySpan<int> endEntityBuffer)
             {
-                foreach (var endEntityID in endEntityBuffer)
-                {
-                    _arc._entitiesGraphFriend.DelEndAndDelRelEntities(endEntityID, _arc);
-                }
                 _arc._arcWorld.ReleaseDelEntityBufferAll();
             }
             public void OnWorldDestroy() { }
-            public void OnWorldResize(int endWorldNewSize)
-            {
-                _arc._entitiesGraph.UpEndSize(endWorldNewSize);
-            }
+            public void OnWorldResize(int endWorldNewSize) { }
             #endregion
         }
         private class LoopWorldHandler : IEcsWorldEventListener
@@ -353,19 +260,10 @@ namespace DCFApixels.DragonECS
             #region Callbacks
             public void OnReleaseDelEntityBuffer(ReadOnlySpan<int> startEntityBuffer)
             {
-                foreach (var startEntityID in startEntityBuffer)
-                {
-                    _arc._entitiesGraphFriend.DelStartAndDelRelEntities(startEntityID, _arc);
-                    _arc._entitiesGraphFriend.DelEndAndDelRelEntities(startEntityID, _arc);
-                }
                 _arc._arcWorld.ReleaseDelEntityBufferAll();
             }
             public void OnWorldDestroy() { }
-            public void OnWorldResize(int startWorldNewSize)
-            {
-                _arc._entitiesGraph.UpStartSize(startWorldNewSize);
-                _arc._entitiesGraph.UpEndSize(startWorldNewSize);
-            }
+            public void OnWorldResize(int startWorldNewSize) { }
             #endregion
         }
         #endregion
