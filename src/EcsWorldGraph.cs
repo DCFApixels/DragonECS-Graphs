@@ -103,7 +103,7 @@ namespace DCFApixels.DragonECS
         }
 
 
-        public static EcsArc SetLoopArcAuto<TWorld>(this TWorld self, out EcsLoopArcWorld<TWorld> arcWorld, IEcsWorldConfig config = null)
+        public static EcsArc SetLoopArcAuto<TWorld>(this TWorld self, out EcsLoopArcWorld<TWorld> arcWorld, IConfigContainer config = null)
             where TWorld : EcsWorld
         {
             if (self == null)
@@ -117,7 +117,7 @@ namespace DCFApixels.DragonECS
             arcWorld = new EcsLoopArcWorld<TWorld>(config);
             return Register(self, self, arcWorld);
         }
-        public static EcsArc SetArcAuto<TStartWorld, TEndWorld>(this TStartWorld start, TEndWorld end, out EcsArcWorld<TStartWorld, TEndWorld> arcWorld, IEcsWorldConfig config = null)
+        public static EcsArc SetArcAuto<TStartWorld, TEndWorld>(this TStartWorld start, TEndWorld end, out EcsArcWorld<TStartWorld, TEndWorld> arcWorld, IConfigContainer config = null)
             where TStartWorld : EcsWorld
             where TEndWorld : EcsWorld
         {
@@ -132,12 +132,12 @@ namespace DCFApixels.DragonECS
             arcWorld = new EcsArcWorld<TStartWorld, TEndWorld>(config);
             return Register(start, end, arcWorld);
         }
-        public static EcsArc SetLoopArcAuto<TWorld>(this TWorld self, IEcsWorldConfig config = null)
+        public static EcsArc SetLoopArcAuto<TWorld>(this TWorld self, IConfigContainer config = null)
             where TWorld : EcsWorld
         {
             return SetLoopArcAuto(self, out _, config);
         }
-        public static EcsArc SetArcAuto<TStartWorld, TEndWorld>(this TStartWorld start, TEndWorld end, IEcsWorldConfig config = null)
+        public static EcsArc SetArcAuto<TStartWorld, TEndWorld>(this TStartWorld start, TEndWorld end, IConfigContainer config = null)
             where TStartWorld : EcsWorld
             where TEndWorld : EcsWorld
         {
