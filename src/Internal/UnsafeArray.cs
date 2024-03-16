@@ -5,7 +5,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 
-namespace DCFApixels.DragonECS.Relations.Internal
+namespace DCFApixels.DragonECS.Graphs.Internal
 {
     internal unsafe static class UnsafeArray
     {

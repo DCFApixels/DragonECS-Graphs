@@ -1,14 +1,32 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
-namespace DCFApixels.DragonECS.Relations.Internal
+namespace DCFApixels.DragonECS.Graphs.Internal
 {
     internal static class Throw
     {
         [MethodImpl(MethodImplOptions.NoInlining)]
+        internal static void RelationAlreadyExists()
+        {
+            throw new EcsRelationException("This relation already exists.");
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        internal static void UndefinedRelationException()
+        {
+            throw new EcsRelationException();
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
         internal static void ArgumentNull()
         {
             throw new ArgumentNullException();
+        }
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        internal static void ArgumentOutOfRange()
+        {
+            throw new ArgumentOutOfRangeException($"index is less than 0 or is equal to or greater than Count.");
         }
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal static void UndefinedException()
@@ -16,19 +34,19 @@ namespace DCFApixels.DragonECS.Relations.Internal
             throw new Exception();
         }
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static void ArgumentOutOfRange()
+        internal static void Exception(string message)
         {
-            throw new ArgumentOutOfRangeException();
+            throw new Exception(message);
         }
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static void UndefinedRelationException()
+        internal static void ArgumentException(string message)
         {
-            throw new EcsRelationException();
+            throw new ArgumentException(message);
         }
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static void RelationAlreadyExists()
+        internal static void KeyNotFound()
         {
-            throw new EcsRelationException("This relation already exists.");
+            throw new KeyNotFoundException();
         }
     }
 }

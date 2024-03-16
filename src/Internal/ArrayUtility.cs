@@ -5,7 +5,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-namespace DCFApixels.DragonECS.Relations.Internal
+namespace DCFApixels.DragonECS.Graphs.Internal
 {
     internal static class ArrayUtility
     {

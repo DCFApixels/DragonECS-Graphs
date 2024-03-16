@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using TValue = System.Int32;
 
-namespace DCFApixels.DragonECS.Relations.Internal
+namespace DCFApixels.DragonECS.Graphs.Internal
 {
     internal sealed unsafe class SparseMatrix
     {
@@ -33,7 +33,6 @@ namespace DCFApixels.DragonECS.Relations.Internal
         public int Capacity
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            //get { return _buckets.Length; }
             get { return _capacity; }
         }
         #endregion
@@ -43,15 +42,11 @@ namespace DCFApixels.DragonECS.Relations.Internal
         public SparseMatrix(int minCapacity = MIN_CAPACITY)
         {
             minCapacity = NormalizeCapacity(minCapacity);
-            //_buckets = new Basket[minCapacity];
-            //_buckets = new UnsafeArray<Basket>(minCapacity);
             _buckets = UnmanagedArrayUtility.New<Basket>(minCapacity);
             for (int i = 0; i < minCapacity; i++)
             {
                 _buckets[i] = Basket.Empty;
             }
-            //_entries = new Entry[minCapacity];
-            //_entries = new UnsafeArray<Entry>(minCapacity, true);
             _entries = UnmanagedArrayUtility.NewAndInit<Entry>(minCapacity);
             _modBitMask = (minCapacity - 1) & 0x7FFFFFFF;
 
@@ -59,12 +54,9 @@ namespace DCFApixels.DragonECS.Relations.Internal
             _freeList = 0;
             _freeCount = 0;
 
-            //
             _capacity = minCapacity;
         }
         #endregion
-
-
 
         #region Add/TryAdd/Set
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -74,7 +66,7 @@ namespace DCFApixels.DragonECS.Relations.Internal
 #if DEBUG
             if (FindEntry(key) >= 0)
             {
-                throw new ArgumentException("Has(x, y) is true");
+                Throw.ArgumentException("Has(x, y) is true");
             }
 #endif
             int targetBucket = key.yHash & _modBitMask;
@@ -114,7 +106,6 @@ namespace DCFApixels.DragonECS.Relations.Internal
             int index;
             if (_freeCount == 0)
             {
-                //if (_count == _entries.Length)
                 if (_count == _capacity)
                 {
                     Resize();
@@ -124,26 +115,23 @@ namespace DCFApixels.DragonECS.Relations.Internal
             }
             else
             {
-                //_freeCount > 0
                 index = _freeList;
                 _freeList = _entries[index].next;
                 _freeCount--;
             }
 
 #if DEBUG
-            if(_freeCount < 0) { throw new Exception(); }
+            if(_freeCount < 0) { Throw.UndefinedException(); }
 #endif
 
             ref Basket basket = ref _buckets[targetBucket];
             ref Entry entry = ref _entries[index];
-
 
             entry.next = basket.index;
             entry.key = key;
             entry.value = value;
             basket.count++;
             basket.index = index;
-            //Console.WriteLine($"{targetBucket} {basket.count}");
 
             if (basket.count >= MAX_CHAIN_LENGTH && Count / Capacity >= 0.7f)
             {
@@ -191,10 +179,7 @@ namespace DCFApixels.DragonECS.Relations.Internal
         {
             int index = FindEntry(x, y);
 #if DEBUG
-            if(index < 0)
-            {
-                throw new KeyNotFoundException();
-            }
+            if(index < 0) { Throw.KeyNotFound(); }
 #endif
             return _entries[index].value;
         }
@@ -246,21 +231,15 @@ namespace DCFApixels.DragonECS.Relations.Internal
         }
         #endregion
 
-
-        
-
         #region Clear
         public void Clear()
         {
             if (_count > 0)
             {
-                //for (int i = 0; i < _buckets.Length; i++)
                 for (int i = 0; i < _capacity; i++)
                 {
                     _buckets[i] = Basket.Empty;
                 }
-                //Array.Clear(_entries, 0, _count);
-                //UnsafeArray.Clear(ref _entries);
                 for (int i = 0; i < _capacity; i++)
                 {
                     _entries[i] = default;
@@ -274,26 +253,16 @@ namespace DCFApixels.DragonECS.Relations.Internal
         [MethodImpl(MethodImplOptions.NoInlining)]
         private void Resize()
         {
-            //int newSize = _buckets.Length << 1;
             int newSize = _capacity << 1;
             _modBitMask = (newSize - 1) & 0x7FFFFFFF;
 
-            //Contract.Assert(newSize >= _entries.Length);
-
-            //Basket[] newBuckets = new Basket[newSize];
-            //UnsafeArray<Basket> newBuckets = new UnsafeArray<Basket>(newSize);
             Basket* newBuckets = UnmanagedArrayUtility.New<Basket>(newSize);
-            //for (int i = 0; i < newBuckets.Length; i++)
             for (int i = 0; i < _capacity; i++)
             {
                 newBuckets[i] = Basket.Empty;
             }
 
-            //Entry[] newEntries = new Entry[newSize];
-            //Array.Copy(_entries, 0, newEntries, 0, _count);
-            //UnsafeArray<Entry> newEntries = UnsafeArray<Entry>.Resize(_entries, newSize);
             Entry* newEntries = UnmanagedArrayUtility.ResizeAndInit<Entry>(_entries, _capacity, newSize);
-
             for (int i = 0; i < _count; i++)
             {
                 if (newEntries[i].key.yHash >= 0)
@@ -309,8 +278,6 @@ namespace DCFApixels.DragonECS.Relations.Internal
             _entries = newEntries;
 
             _capacity = newSize;
-
-            Console.WriteLine($"----- {Capacity} {Count}");
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -329,18 +296,13 @@ namespace DCFApixels.DragonECS.Relations.Internal
             public int next;        // Index of next entry, -1 if last
             public Key key;
             public TValue value;
-
-            public override string ToString()
-            {
-                return key.x == 0 ? "NULL" : value.ToString();
-            }
+            public override string ToString() { return key.x == 0 ? "NULL" : value.ToString(); }
         }
 
         [StructLayout(LayoutKind.Sequential, Pack = 4, Size = 8)]
         public struct Basket
         {
             public static readonly Basket Empty = new Basket(-1, 0);
-
             public int index;
             public int count;
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -349,10 +311,7 @@ namespace DCFApixels.DragonECS.Relations.Internal
                 this.index = index;
                 this.count = length;
             }
-            public override string ToString()
-            {
-                return index < 0 ? "NULL" : $"{index} {count}";
-            }
+            public override string ToString() { return index < 0 ? "NULL" : $"{index} {count}"; }
         }
 
         [StructLayout(LayoutKind.Sequential, Pack = 4, Size = 8)]
@@ -368,32 +327,12 @@ namespace DCFApixels.DragonECS.Relations.Internal
                 this.yHash = yHash;
             }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static Key FromXY(int x, int y)
-            {
-                //return new Key(x, BitsUtility.NextXorShiftState(y));
-                //return new Key(x, (~x) ^ y ^ 1_431_655_765);
-                return new Key(x, x ^ y ^ BitsUtility.NextXorShiftState(y));
-            }
-            public static bool operator ==(Key a, Key b)
-            {
-                return a.x == b.x && a.yHash == b.yHash;
-            }
-            public static bool operator !=(Key a, Key b)
-            {
-                return a.x != b.x || a.yHash != b.yHash;
-            }
-            public override int GetHashCode()
-            {
-                return yHash;
-            }
-            public bool Equals(Key other)
-            {
-                return this == other;
-            }
-            public override bool Equals(object obj)
-            {
-                return obj is Key && Equals((Key)obj);
-            }
+            public static Key FromXY(int x, int y) { return new Key(x, x ^ y ^ BitsUtility.NextXorShiftState(y)); }
+            public static bool operator ==(Key a, Key b) { return a.x == b.x && a.yHash == b.yHash; }
+            public static bool operator !=(Key a, Key b) { return a.x != b.x || a.yHash != b.yHash; }
+            public override int GetHashCode() { return yHash; }
+            public bool Equals(Key other) { return this == other; }
+            public override bool Equals(object obj) { return obj is Key && Equals((Key)obj); }
         }
         #endregion
     }

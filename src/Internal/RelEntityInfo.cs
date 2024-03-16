@@ -2,11 +2,11 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-namespace DCFApixels.DragonECS
+namespace DCFApixels.DragonECS.Graphs.Internal
 {
     [StructLayout(LayoutKind.Sequential, Pack = 4, Size = 8)]
     [Serializable]
-    public readonly struct RelEntityInfo : IEquatable<RelEntityInfo>
+    internal readonly struct RelEntityInfo : IEquatable<RelEntityInfo>
     {
         public static readonly RelEntityInfo Empty = new RelEntityInfo();
 

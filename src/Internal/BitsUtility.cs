@@ -3,9 +3,9 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
-using static DCFApixels.DragonECS.Relations.Internal.BitsUtility;
+using static DCFApixels.DragonECS.Graphs.Internal.BitsUtility;
 
-namespace DCFApixels.DragonECS.Relations.Internal
+namespace DCFApixels.DragonECS.Graphs.Internal
 {
     internal unsafe static class BitsUtility
     {

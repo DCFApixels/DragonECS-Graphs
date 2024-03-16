@@ -1,5 +1,5 @@
-﻿using DCFApixels.DragonECS.Relations.Internal;
-using DCFApixels.DragonECS.Relations.Utils;
+﻿using DCFApixels.DragonECS.Graphs.Internal;
+using DCFApixels.DragonECS.Graphs.Utils;
 using System;
 
 namespace DCFApixels.DragonECS

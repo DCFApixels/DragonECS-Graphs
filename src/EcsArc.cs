@@ -1,4 +1,4 @@
-﻿using DCFApixels.DragonECS.Relations.Internal;
+﻿using DCFApixels.DragonECS.Graphs.Internal;
 using System;
 using System.Runtime.CompilerServices;
 
@@ -223,8 +223,6 @@ namespace DCFApixels.DragonECS
             {
                 foreach (var relEntityID in relEntityBuffer)
                 {
-                    //var (startEntityID, endEntityID) = _arc._relEntityInfos[relEntityID];
-                    //_arc.ClearRelation_Internal(startEntityID, endEntityID);
                     _arc.ClearRelation_Internal(relEntityID);
                 }
             }
@@ -242,7 +240,7 @@ namespace DCFApixels.DragonECS
             {
                 _arc = arc;
                 _arc.StartWorld.AddListener(this);
-                OnWorldResize(_arc.StartWorld.Capacity);
+                //OnWorldResize(_arc.StartWorld.Capacity);
             }
             public void Destroy()
             {
@@ -264,7 +262,7 @@ namespace DCFApixels.DragonECS
             {
                 _arc = arc;
                 _arc.EndWorld.AddListener(this);
-                OnWorldResize(_arc.EndWorld.Capacity);
+                //OnWorldResize(_arc.EndWorld.Capacity);
             }
             public void Destroy()
             {
@@ -286,7 +284,7 @@ namespace DCFApixels.DragonECS
             {
                 _arc = arc;
                 _arc.StartWorld.AddListener(this);
-                OnWorldResize(_arc.StartWorld.Capacity);
+                //OnWorldResize(_arc.StartWorld.Capacity);
             }
             public void Destroy()
             {

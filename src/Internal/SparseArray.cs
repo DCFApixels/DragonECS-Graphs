@@ -6,9 +6,9 @@ using System.Diagnostics.Contracts;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-namespace DCFApixels.DragonECS.Relations.Utils
+namespace DCFApixels.DragonECS.Graphs.Internal
 {
-    public class SparseArray<TValue>
+    internal class SparseArray<TValue>
     {
         public const int MIN_CAPACITY_BITS_OFFSET = 4;
         public const int MIN_CAPACITY = 1 << MIN_CAPACITY_BITS_OFFSET;
