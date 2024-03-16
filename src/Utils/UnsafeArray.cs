@@ -9,17 +9,29 @@ namespace DCFApixels.DragonECS.Relations.Internal
 {
     internal unsafe static class UnsafeArray
     {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void Resize<T>(ref UnsafeArray<T> array, int newSize)
             where T : unmanaged
         {
             array.ptr = UnmanagedArrayUtility.Resize<T>(array.ptr, newSize);
             array.Length = newSize;
         }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void ResizeAndInit<T>(ref UnsafeArray<T> array, int newSize)
             where T : unmanaged
         {
             array.ptr = UnmanagedArrayUtility.ResizeAndInit<T>(array.ptr, array.Length, newSize);
             array.Length = newSize;
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void Clear<T>(ref UnsafeArray<T> array)
+            where T : unmanaged
+        {
+            T* ptr = array.ptr;
+            for (int i = 0; i < array.Length; i++)
+            {
+                ptr[i] = default;
+            }
         }
     }
     [DebuggerTypeProxy(typeof(UnsafeArray<>.DebuggerProxy))]

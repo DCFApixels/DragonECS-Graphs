@@ -19,8 +19,8 @@ namespace DCFApixels.DragonECS
         private readonly EndWorldHandler _endWorldHandler;
         private readonly LoopWorldHandler _loopWorldHandler;
 
-        private EcsGroup _relEntities;
         private RelEntityInfo[] _relEntityInfos; //N * (N - 1) / 2
+        private readonly SparseMatrix _matrix;
 
         private bool _isLoop;
         private bool _isInit = false;
@@ -51,11 +51,6 @@ namespace DCFApixels.DragonECS
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return _arcWorld.id; }
         }
-        public EcsReadonlyGroup RelEntities
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get { return _relEntities.Readonly; }
-        }
         public bool IsLoop
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -73,9 +68,7 @@ namespace DCFApixels.DragonECS
             _isLoop = startWorld == endWorld;
 
             _relEntityInfos = new RelEntityInfo[arcWorld.Capacity];
-
-
-            _relEntities = EcsGroup.New(_arcWorld);
+            _matrix = new SparseMatrix(arcWorld.Capacity);
 
             _arcWorldHandler = new ArcWorldHandler(this);
             if (_isLoop)
@@ -106,24 +99,66 @@ namespace DCFApixels.DragonECS
         }
         #endregion
 
-        #region New/Del
+        #region New
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int NewRelation(int startEntityID, int endEntityID)
         {
-            int relEntity = _arcWorld.NewEntity();
-            _relEntityInfos[relEntity] = new RelEntityInfo(startEntityID, endEntityID);
-            _relEntities.Add(relEntity);
-            return relEntity;
+            return NewRelationInternal(startEntityID, endEntityID);
         }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int GetOrNewRelation(int startEntityID, int endEntityID)
+        {
+            if (_matrix.TryGetValue(startEntityID, endEntityID, out int relEntityID))
+            {
+                return relEntityID;
+            }
+            return NewRelationInternal(startEntityID, endEntityID);
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private int NewRelationInternal(int startEntityID, int endEntityID)
+        {
+            int relEntityID = _arcWorld.NewEntity();
+            _matrix.Add(startEntityID, endEntityID, relEntityID);
+            _relEntityInfos[relEntityID] = new RelEntityInfo(startEntityID, endEntityID);
+            return relEntityID;
+        }
+        #endregion
 
+        #region Has
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool HasRelation(int startEntityID, int endEntityID)
+        {
+            return _matrix.HasKey(startEntityID, endEntityID);
+        }
+        #endregion
+
+        #region Get
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int GetRelation(int startEntityID, int endEntityID)
+        {
+            return _matrix.GetValue(startEntityID, endEntityID);
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool TryGetRelation(int startEntityID, int endEntityID, out int relEntityID)
+        {
+            return _matrix.TryGetValue(startEntityID, endEntityID, out relEntityID);
+        }
+        #endregion
+
+        #region Del
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void DelRelation(int relEntityID)
         {
             _arcWorld.DelEntity(relEntityID);
+            ClearRelation_Internal(relEntityID);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void ClearRelation_Internal(int relEntityID)
         {
-            _relEntities.Remove(relEntityID);
-            _relEntityInfos[relEntityID] = RelEntityInfo.Empty;
+            ref RelEntityInfo info = ref _relEntityInfos[relEntityID];
+            _matrix.TryDel(info.start, info.end);
+            info = RelEntityInfo.Empty;
         }
         #endregion
 
