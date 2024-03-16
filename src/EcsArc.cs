@@ -19,7 +19,7 @@ namespace DCFApixels.DragonECS
         private readonly EndWorldHandler _endWorldHandler;
         private readonly LoopWorldHandler _loopWorldHandler;
 
-        private RelEntityInfo[] _relEntityInfos; //N * (N - 1) / 2
+        private RelationInfo[] _relEntityInfos; //N * (N - 1) / 2
         private readonly SparseMatrix _matrix;
 
         private bool _isLoop;
@@ -67,7 +67,7 @@ namespace DCFApixels.DragonECS
 
             _isLoop = startWorld == endWorld;
 
-            _relEntityInfos = new RelEntityInfo[arcWorld.Capacity];
+            _relEntityInfos = new RelationInfo[arcWorld.Capacity];
             _matrix = new SparseMatrix(arcWorld.Capacity);
 
             _arcWorldHandler = new ArcWorldHandler(this);
@@ -119,7 +119,7 @@ namespace DCFApixels.DragonECS
         {
             int relEntityID = _arcWorld.NewEntity();
             _matrix.Add(startEntityID, endEntityID, relEntityID);
-            _relEntityInfos[relEntityID] = new RelEntityInfo(startEntityID, endEntityID);
+            _relEntityInfos[relEntityID] = new RelationInfo(startEntityID, endEntityID);
             return relEntityID;
         }
         #endregion
@@ -156,9 +156,9 @@ namespace DCFApixels.DragonECS
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void ClearRelation_Internal(int relEntityID)
         {
-            ref RelEntityInfo info = ref _relEntityInfos[relEntityID];
+            ref RelationInfo info = ref _relEntityInfos[relEntityID];
             _matrix.TryDel(info.start, info.end);
-            info = RelEntityInfo.Empty;
+            info = RelationInfo.Empty;
         }
         #endregion
 
@@ -170,16 +170,16 @@ namespace DCFApixels.DragonECS
             {
                 return false;
             }
-            return !_relEntityInfos[relEntityID].IsEmpty;
+            return !_relEntityInfos[relEntityID].IsNull;
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public RelEntityInfo GetRelationInfo(int relEntityID)
+        public StartEnd GetRelationInfo(int relEntityID)
         {
             if (relEntityID <= 0 || relEntityID >= _relEntityInfos.Length)
             {
                 Throw.UndefinedException();
             }
-            return _relEntityInfos[relEntityID];
+            return new StartEnd(_relEntityInfos[relEntityID]);
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int GetRelStart(int relEntityID)

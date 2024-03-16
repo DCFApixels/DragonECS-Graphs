@@ -121,7 +121,7 @@ namespace DCFApixels.DragonECS.Graphs.Internal
             }
 
 #if DEBUG
-            if(_freeCount < 0) { Throw.UndefinedException(); }
+            if (_freeCount < 0) { Throw.UndefinedException(); }
 #endif
 
             ref Basket basket = ref _buckets[targetBucket];
@@ -179,7 +179,7 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         {
             int index = FindEntry(x, y);
 #if DEBUG
-            if(index < 0) { Throw.KeyNotFound(); }
+            if (index < 0) { Throw.KeyNotFound(); }
 #endif
             return _entries[index].value;
         }
