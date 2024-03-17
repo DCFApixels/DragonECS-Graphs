@@ -47,8 +47,7 @@ namespace DCFApixels.DragonECS.Graphs.Internal
             get
             {
 #if DEBUG
-                if (index < 0 || index >= Length)
-                    Throw.ArgumentOutOfRange();
+                if (index < 0 || index >= Length) { Throw.ArgumentOutOfRange(); }
 #endif
                 return ref ptr[index];
             }
@@ -67,7 +66,7 @@ namespace DCFApixels.DragonECS.Graphs.Internal
             Length = length;
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private UnsafeArray(T* ptr, int length)
+        public UnsafeArray(T* ptr, int length)
         {
             this.ptr = ptr;
             Length = length;

@@ -1,4 +1,5 @@
 ﻿using DCFApixels.DragonECS.Graphs.Internal;
+using DCFApixels.DragonECS.UncheckedCore;
 using System;
 using System.Runtime.CompilerServices;
 
@@ -25,6 +26,8 @@ namespace DCFApixels.DragonECS
         private bool _isLoop;
         private bool _isInit = false;
 
+        private int _count;
+
         #region Properties
         internal bool IsInit_Internal
         {
@@ -46,7 +49,7 @@ namespace DCFApixels.DragonECS
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return _arcWorld; }
         }
-        public int ArcWorldID
+        public short ArcWorldID
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return _arcWorld.id; }
@@ -55,6 +58,11 @@ namespace DCFApixels.DragonECS
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return _isLoop; }
+        }
+        public int Count
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get { return _count; }
         }
         #endregion
 
@@ -120,6 +128,7 @@ namespace DCFApixels.DragonECS
             int relEntityID = _arcWorld.NewEntity();
             _matrix.Add(startEntityID, endEntityID, relEntityID);
             _relEntityInfos[relEntityID] = new RelationInfo(startEntityID, endEntityID);
+            _count++;
             return relEntityID;
         }
         #endregion
@@ -149,16 +158,19 @@ namespace DCFApixels.DragonECS
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void DelRelation(int relEntityID)
         {
-            _arcWorld.DelEntity(relEntityID);
-            ClearRelation_Internal(relEntityID);
+            _arcWorld.TryDelEntity(relEntityID);
+            //ClearRelation_Internal(relEntityID);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void ClearRelation_Internal(int relEntityID)
         {
             ref RelationInfo info = ref _relEntityInfos[relEntityID];
-            _matrix.TryDel(info.start, info.end);
-            info = RelationInfo.Empty;
+            if (_matrix.TryDel(info.start, info.end))
+            {
+                _count--;
+                info = RelationInfo.Empty;
+            }
         }
         #endregion
 
@@ -241,6 +253,42 @@ namespace DCFApixels.DragonECS
             }
             #endregion
         }
+
+        #region Loop
+        private class LoopWorldHandler : IEcsWorldEventListener
+        {
+            private readonly EcsArc _arc;
+            public LoopWorldHandler(EcsArc arc)
+            {
+                _arc = arc;
+                _arc.StartWorld.AddListener(this);
+                //OnWorldResize(_arc.StartWorld.Capacity);
+            }
+            public void Destroy()
+            {
+                _arc.StartWorld.RemoveListener(this);
+            }
+            #region Callbacks
+            public void OnReleaseDelEntityBuffer(ReadOnlySpan<int> startEntityBuffer)
+            {
+                var graph = _arc.ArcWorld.GetExecutor<EcsJoinToGraphExecutor<EmptyAspect>>().Execute();
+                foreach (var e in startEntityBuffer)
+                {
+                    var span = graph.GetNodes(e);
+                    foreach (var relE in span)
+                    {
+                        _arc.DelRelation(relE);
+                    }
+                }
+                _arc._arcWorld.ReleaseDelEntityBufferAll();
+            }
+            public void OnWorldDestroy() { }
+            public void OnWorldResize(int startWorldNewSize) { }
+            #endregion
+        }
+        #endregion
+
+        #region StartEnd
         private class StartWorldHandler : IEcsWorldEventListener
         {
             private readonly EcsArc _arc;
@@ -285,28 +333,8 @@ namespace DCFApixels.DragonECS
             public void OnWorldResize(int endWorldNewSize) { }
             #endregion
         }
-        private class LoopWorldHandler : IEcsWorldEventListener
-        {
-            private readonly EcsArc _arc;
-            public LoopWorldHandler(EcsArc arc)
-            {
-                _arc = arc;
-                _arc.StartWorld.AddListener(this);
-                //OnWorldResize(_arc.StartWorld.Capacity);
-            }
-            public void Destroy()
-            {
-                _arc.StartWorld.RemoveListener(this);
-            }
-            #region Callbacks
-            public void OnReleaseDelEntityBuffer(ReadOnlySpan<int> startEntityBuffer)
-            {
-                _arc._arcWorld.ReleaseDelEntityBufferAll();
-            }
-            public void OnWorldDestroy() { }
-            public void OnWorldResize(int startWorldNewSize) { }
-            #endregion
-        }
+        #endregion
+
         #endregion
     }
 }

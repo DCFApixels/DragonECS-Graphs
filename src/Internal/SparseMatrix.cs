@@ -13,8 +13,8 @@ namespace DCFApixels.DragonECS.Graphs.Internal
 
         private const int MAX_CHAIN_LENGTH = 5;
 
-        private Basket* _buckets;
-        private Entry* _entries;
+        private UnsafeArray<Basket> _buckets;
+        private UnsafeArray<Entry> _entries;
         private int _capacity;
 
         private int _count;
@@ -42,12 +42,12 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         public SparseMatrix(int minCapacity = MIN_CAPACITY)
         {
             minCapacity = NormalizeCapacity(minCapacity);
-            _buckets = UnmanagedArrayUtility.New<Basket>(minCapacity);
+            _buckets = new UnsafeArray<Basket>(minCapacity);
             for (int i = 0; i < minCapacity; i++)
             {
                 _buckets[i] = Basket.Empty;
             }
-            _entries = UnmanagedArrayUtility.NewAndInit<Entry>(minCapacity);
+            _entries = new UnsafeArray<Entry>(minCapacity, true);
             _modBitMask = (minCapacity - 1) & 0x7FFFFFFF;
 
             _count = 0;
@@ -256,26 +256,29 @@ namespace DCFApixels.DragonECS.Graphs.Internal
             int newSize = _capacity << 1;
             _modBitMask = (newSize - 1) & 0x7FFFFFFF;
 
+            //newBuckets create and ini
             Basket* newBuckets = UnmanagedArrayUtility.New<Basket>(newSize);
-            for (int i = 0; i < _capacity; i++)
+            for (int i = 0; i < newSize; i++)
             {
                 newBuckets[i] = Basket.Empty;
             }
+            //END newBuckets create and ini
 
-            Entry* newEntries = UnmanagedArrayUtility.ResizeAndInit<Entry>(_entries, _capacity, newSize);
+            Entry* newEntries = UnmanagedArrayUtility.ResizeAndInit<Entry>(_entries.ptr, _capacity, newSize);
             for (int i = 0; i < _count; i++)
             {
                 if (newEntries[i].key.yHash >= 0)
                 {
-                    int targetBusket = newEntries[i].key.yHash % newSize;
+                    int targetBusket = newEntries[i].key.yHash % _capacity;
                     ref Basket basket = ref _buckets[targetBusket];
                     newEntries[i].next = basket.index;
                     basket.index = i;
                     basket.count++;
                 }
             }
-            _buckets = newBuckets;
-            _entries = newEntries;
+
+            _buckets = new UnsafeArray<Basket>(newBuckets, newSize);
+            _entries = new UnsafeArray<Entry>(newEntries, newSize);
 
             _capacity = newSize;
         }

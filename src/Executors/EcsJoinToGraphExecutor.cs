@@ -41,6 +41,7 @@ namespace DCFApixels.DragonECS
             _baskets = new Basket[World.Capacity];
             World.AddListener(this);
             _arcWorld = (EcsArcWorld)World;
+            _aspect = AspectRaw;
         }
         protected override void OnDestroy()
         {
@@ -80,28 +81,26 @@ namespace DCFApixels.DragonECS
 
                 EcsArc arc = _arcWorld.GetRegisteredArc();
 
-                var iterator = _aspect.GetIteratorFor(span);
-                foreach (var relationEntityID in iterator)
+                if (_aspect.Mask.IsEmpty)
                 {
-                    int startEntityID = arc.GetRelationStart(relationEntityID);
-                    if(startEntityID == 0)
+                    foreach (var relationEntityID in span)
                     {
-                        continue;
+                        int startEntityID = arc.GetRelationStart(relationEntityID);
+                        if (startEntityID == 0) { continue; }
+                        Add(startEntityID, relationEntityID);
                     }
-                    _startEntities[_startEntitiesCount++] = startEntityID;
-
-                    ref var basket = ref _baskets[startEntityID];
-                    if (basket.index <= 0)
-                    {
-                        basket.index = _linkedList.Add(relationEntityID);
-                    }
-                    else
-                    {
-                        _linkedList.InsertAfter(basket.index, relationEntityID);
-                    }
-                    basket.count++;
                 }
-
+                else
+                {
+                    var iterator = _aspect.GetIteratorFor(span);
+                    foreach (var relationEntityID in iterator)
+                    {
+                        int startEntityID = arc.GetRelationStart(relationEntityID);
+                        if (startEntityID == 0) { continue; }
+                        Add(startEntityID, relationEntityID);
+                    }
+                }
+                
                 _lastWorldVersion = World.Version;
             }
             else
@@ -111,6 +110,21 @@ namespace DCFApixels.DragonECS
 
             _executeMarker.End();
             return new EcsGraph(this, UncheckedCoreUtility.CreateSpan(WorldID, _startEntities, _startEntitiesCount));
+        }
+
+        private void Add(int startEntityID, int relationEntityID)
+        {
+            _startEntities[_startEntitiesCount++] = startEntityID;
+            ref var basket = ref _baskets[startEntityID];
+            if (basket.index <= 0)
+            {
+                basket.index = _linkedList.Add(relationEntityID);
+            }
+            else
+            {
+                _linkedList.InsertAfter(basket.index, relationEntityID);
+            }
+            basket.count++;
         }
         #endregion
 
@@ -156,7 +170,7 @@ namespace DCFApixels.DragonECS
         }
         #endregion
     }
-    public sealed class EcsJoinExecutor<TAspect> : EcsJoinToGraphExecutor
+    public sealed class EcsJoinToGraphExecutor<TAspect> : EcsJoinToGraphExecutor
         where TAspect : EcsAspect
     {
         private TAspect _aspect;
@@ -169,7 +183,14 @@ namespace DCFApixels.DragonECS
         }
         protected override EcsAspect AspectRaw
         {
-            get { return _aspect; }
+            get
+            {
+                if (_aspect == null)
+                {
+                    _aspect = World.GetAspect<TAspect>();
+                }
+                return _aspect;
+            }
         }
         #endregion
     }
