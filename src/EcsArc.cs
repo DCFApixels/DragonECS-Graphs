@@ -173,7 +173,7 @@ namespace DCFApixels.DragonECS
             return !_relEntityInfos[relEntityID].IsNull;
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public StartEnd GetRelationInfo(int relEntityID)
+        public StartEnd GetRelationStartEnd(int relEntityID)
         {
             if (relEntityID <= 0 || relEntityID >= _relEntityInfos.Length)
             {
@@ -182,14 +182,22 @@ namespace DCFApixels.DragonECS
             return new StartEnd(_relEntityInfos[relEntityID]);
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int GetRelStart(int relEntityID)
+        public int GetRelationStart(int relEntityID)
         {
-            return GetRelationInfo(relEntityID).start;
+            if (relEntityID <= 0 || relEntityID >= _relEntityInfos.Length)
+            {
+                Throw.UndefinedException();
+            }
+            return _relEntityInfos[relEntityID].start;
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int GetRelEnd(int relEntityID)
+        public int GetRelationEnd(int relEntityID)
         {
-            return GetRelationInfo(relEntityID).end;
+            if (relEntityID <= 0 || relEntityID >= _relEntityInfos.Length)
+            {
+                Throw.UndefinedException();
+            }
+            return _relEntityInfos[relEntityID].end;
         }
         #endregion
 

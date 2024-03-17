@@ -80,23 +80,17 @@ namespace DCFApixels.DragonECS
         #region Extension
         public static bool IsRegistered(this EcsArcWorld self)
         {
-            if (self == null)
-            {
-                Throw.ArgumentNull();
-            }
+            if (self == null) { Throw.ArgumentNull(); }
             int id = self.id;
             return id < _arcsMapping.Length && _arcsMapping[self.id] != null;
         }
         public static EcsArc GetRegisteredArc(this EcsArcWorld self)
         {
-            if (self == null)
-            {
-                Throw.ArgumentNull();
-            }
+            if (self == null) { Throw.ArgumentNull(); }
             int id = self.id;
             if (id < _arcsMapping.Length && _arcsMapping[self.id] == null)
             {
-                throw new Exception();
+                Throw.UndefinedException();
             }
             return _arcsMapping[self.id];
         }
@@ -105,10 +99,7 @@ namespace DCFApixels.DragonECS
         public static EcsArc SetLoopArcAuto<TWorld>(this TWorld self, out EcsLoopArcWorld<TWorld> arcWorld, IConfigContainer config = null)
             where TWorld : EcsWorld
         {
-            if (self == null)
-            {
-                Throw.ArgumentNull();
-            }
+            if (self == null) { Throw.ArgumentNull(); }
             if (typeof(TWorld) != self.GetType())
             {
                 EcsDebug.PrintWarning($"{nameof(TWorld)} is not {self.GetType().Name}");
@@ -120,10 +111,7 @@ namespace DCFApixels.DragonECS
             where TStartWorld : EcsWorld
             where TEndWorld : EcsWorld
         {
-            if (start == null || end == null)
-            {
-                Throw.ArgumentNull();
-            }
+            if (start == null || end == null) { Throw.ArgumentNull(); }
             if (typeof(TStartWorld) == typeof(EcsWorld) && typeof(TEndWorld) == typeof(EcsWorld))
             {
                 EcsDebug.PrintWarning($"{nameof(TStartWorld)} is not {start.GetType().Name} or {nameof(TEndWorld)} is not {end.GetType().Name}");
@@ -143,49 +131,52 @@ namespace DCFApixels.DragonECS
             return SetArcAuto(start, end, out _, config);
         }
 
-        public static EcsArc SetLoopArc(this EcsWorld self, EcsArcWorld arc) => SetArc(self, self, arc);
+        public static EcsArc SetLoopArc(this EcsWorld self, EcsArcWorld arc)
+        {
+            return SetArc(self, self, arc);
+        }
         public static EcsArc SetArc(this EcsWorld start, EcsWorld end, EcsArcWorld arc)
         {
-            if (start == null || end == null || arc == null)
-            {
-                Throw.ArgumentNull();
-            }
+            if (start == null || end == null || arc == null) { Throw.ArgumentNull(); }
             return Register(start, end, arc);
         }
 
-        public static bool HasLoopArc(this EcsWorld self) => HasArc(self, self);
+        public static bool HasLoopArc(this EcsWorld self)
+        {
+            return HasArc(self, self);
+        }
         public static bool HasArc(this EcsWorld start, EcsWorld end)
         {
-            if (start == null || end == null)
-            {
-                Throw.ArgumentNull();
-            }
+            if (start == null || end == null) { Throw.ArgumentNull(); }
             return Has(start, end);
         }
 
-        public static EcsArc GetLoopArc(this EcsWorld self) => GetArc(self, self);
+        public static EcsArc GetLoopArc(this EcsWorld self)
+        {
+            return GetArc(self, self);
+        }
         public static EcsArc GetArc(this EcsWorld start, EcsWorld end)
         {
-            if (start == null || end == null)
-            {
-                Throw.ArgumentNull();
-            }
+            if (start == null || end == null) { Throw.ArgumentNull(); }
             return Get(start, end);
         }
 
-        public static bool TryGetLoopArc(this EcsWorld self, out EcsArc arc) => TryGetArc(self, self, out arc);
+        public static bool TryGetLoopArc(this EcsWorld self, out EcsArc arc)
+        {
+            return TryGetArc(self, self, out arc);
+        }
         public static bool TryGetArc(this EcsWorld start, EcsWorld end, out EcsArc arc)
         {
-            if (start == null || end == null)
-            {
-                Throw.ArgumentNull();
-            }
+            if (start == null || end == null) { Throw.ArgumentNull(); }
             bool result = Has(start, end);
             arc = result ? Get(start, end) : null;
             return result;
         }
 
-        public static void DestroyLoopArc(this EcsWorld self) => DestroyArcWith(self, self);
+        public static void DestroyLoopArc(this EcsWorld self)
+        {
+            DestroyArcWith(self, self);
+        }
         public static void DestroyArcWith(this EcsWorld start, EcsWorld end)
         {
             if (start == null || end == null)
