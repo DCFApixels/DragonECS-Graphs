@@ -257,28 +257,30 @@ namespace DCFApixels.DragonECS.Graphs.Internal
             _modBitMask = (newSize - 1) & 0x7FFFFFFF;
 
             //newBuckets create and ini
-            Basket* newBuckets = UnmanagedArrayUtility.New<Basket>(newSize);
+            //Basket* newBuckets = UnmanagedArrayUtility.New<Basket>(newSize);
+            UnsafeArray<Basket> newBuckets = new UnsafeArray<Basket>(newSize);
             for (int i = 0; i < newSize; i++)
             {
                 newBuckets[i] = Basket.Empty;
             }
             //END newBuckets create and ini
 
-            Entry* newEntries = UnmanagedArrayUtility.ResizeAndInit<Entry>(_entries.ptr, _capacity, newSize);
+            //Entry* newEntries = UnmanagedArrayUtility.ResizeAndInit<Entry>(_entries.ptr, _capacity, newSize);
+            UnsafeArray<Entry> newEntries = UnsafeArray<Entry>.Resize(_entries, newSize);
             for (int i = 0; i < _count; i++)
             {
-                if (newEntries[i].key.yHash >= 0)
+                if (newEntries[i].key.x >= 0)
                 {
-                    int targetBusket = newEntries[i].key.yHash % _capacity;
-                    ref Basket basket = ref _buckets[targetBusket];
-                    newEntries[i].next = basket.index;
+                    ref Entry entry = ref newEntries[i];
+                    ref Basket basket = ref newBuckets[entry.key.yHash & _modBitMask];
+                    entry.next = basket.index;
                     basket.index = i;
                     basket.count++;
                 }
             }
 
-            _buckets = new UnsafeArray<Basket>(newBuckets, newSize);
-            _entries = new UnsafeArray<Entry>(newEntries, newSize);
+            _buckets = newBuckets;
+            _entries = newEntries;
 
             _capacity = newSize;
         }
@@ -287,7 +289,7 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         private static int NormalizeCapacity(int capacity)
         {
             int result = MIN_CAPACITY;
-            while (result < capacity) result <<= 1;
+            while (result < capacity) { result <<= 1; }
             return result;
         }
         #endregion
@@ -299,7 +301,7 @@ namespace DCFApixels.DragonECS.Graphs.Internal
             public int next;        // Index of next entry, -1 if last
             public Key key;
             public TValue value;
-            public override string ToString() { return key.x == 0 ? "NULL" : value.ToString(); }
+            public override string ToString() { return key.x == 0 ? "NULL" : $"{key} {value}"; }
         }
 
         [StructLayout(LayoutKind.Sequential, Pack = 4, Size = 8)]
@@ -320,7 +322,7 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         [StructLayout(LayoutKind.Sequential, Pack = 4, Size = 8)]
         public readonly struct Key : IEquatable<Key>
         {
-            public static readonly Key Null = new Key(-1, -1);
+            public static readonly Key Null = new Key(-1, 0);
             public readonly int x;
             public readonly int yHash;
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -330,12 +332,29 @@ namespace DCFApixels.DragonECS.Graphs.Internal
                 this.yHash = yHash;
             }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static Key FromXY(int x, int y) { return new Key(x, x ^ y ^ BitsUtility.NextXorShiftState(y)); }
+            public static Key FromXY(int x, int y) 
+            {
+                unchecked
+                {
+                    return new Key(x, x ^ y ^ XXX(y));
+                }
+            }
+            private static int XXX(int x)
+            {
+                x *= 3571;
+                x ^= x << 13;
+                x ^= x >> 17;
+                return x;
+            }
             public static bool operator ==(Key a, Key b) { return a.x == b.x && a.yHash == b.yHash; }
             public static bool operator !=(Key a, Key b) { return a.x != b.x || a.yHash != b.yHash; }
             public override int GetHashCode() { return yHash; }
             public bool Equals(Key other) { return this == other; }
             public override bool Equals(object obj) { return obj is Key && Equals((Key)obj); }
+            public override string ToString()
+            {
+                return $"({x}, {yHash})";
+            }
         }
         #endregion
     }

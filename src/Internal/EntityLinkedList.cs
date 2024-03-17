@@ -21,7 +21,7 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         #region Constructors
         public EntityLinkedList(int capacity)
         {
-            _nodes = new Node[capacity + 10];
+            _nodes = new Node[capacity * 2 + 10];
             Clear();
         }
         #endregion
@@ -29,7 +29,7 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Resize(int newCapacity)
         {
-            Array.Resize(ref _nodes, newCapacity + 10);
+            Array.Resize(ref _nodes, newCapacity * 2 + 10);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -54,6 +54,15 @@ namespace DCFApixels.DragonECS.Graphs.Internal
             return _nodes[nodeIndex].entityID;
         }
 
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int InsertBefore(int nodeIndex, int entityID)
+        {
+            _nodes[++_count].Set(entityID, nodeIndex);
+            return _count;
+        }
+
+
         /// <summary> Insert after</summary>
         /// <returns> new node index</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -61,13 +70,15 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         {
             _nodes[++_count].Set(entityID, _nodes[nodeIndex].next);
             _nodes[nodeIndex].next = _count;
-            _lastNodeIndex = _count;
+            _lastNodeIndex = nodeIndex + 1;
             return _count;
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Add(int entityID)
         {
-            return InsertAfter(_lastNodeIndex, entityID);
+            int result = InsertAfter(_lastNodeIndex, entityID);
+            _lastNodeIndex = _count;
+            return result;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -98,6 +109,10 @@ namespace DCFApixels.DragonECS.Graphs.Internal
             {
                 this.entityID = entityID;
                 this.next = next;
+            }
+            public override string ToString()
+            {
+                return $"e:{entityID} next:{next}";
             }
         }
         public struct Enumerator

@@ -1,29 +1,24 @@
 ﻿using DCFApixels.DragonECS.Graphs.Internal;
-using DCFApixels.DragonECS.UncheckedCore;
 using System;
 using System.Runtime.CompilerServices;
 
 namespace DCFApixels.DragonECS
 {
-    //Arc
-    //Arc world
+    //Graph
+    //Graph world
     //Rel entity
     //Component
-    public class EcsArc
+    public class EcsGraph
     {
-        private readonly EcsWorld _startWorld;
-        private readonly EcsWorld _endWorld;
-        private readonly EcsArcWorld _arcWorld;
+        private readonly EcsWorld _world;
+        private readonly EcsWorld _graphWorld;
 
-        private readonly StartWorldHandler _startWorldHandler;
-        private readonly ArcWorldHandler _arcWorldHandler;
-        private readonly EndWorldHandler _endWorldHandler;
-        private readonly LoopWorldHandler _loopWorldHandler;
+        private readonly GraphWorldHandler _arcWorldHandler;
+        private readonly WorldHandler _loopWorldHandler;
 
         private RelationInfo[] _relEntityInfos; //N * (N - 1) / 2
         private readonly SparseMatrix _matrix;
 
-        private bool _isLoop;
         private bool _isInit = false;
 
         private int _count;
@@ -34,30 +29,25 @@ namespace DCFApixels.DragonECS
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return _isInit; }
         }
-        public EcsWorld StartWorld
+        public EcsWorld World
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get { return _startWorld; }
+            get { return _world; }
         }
-        public EcsWorld EndWorld
+        public short WorldID
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get { return _endWorld; }
+            get { return _world.id; }
         }
-        public EcsArcWorld ArcWorld
+        public EcsWorld GraphWorld
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get { return _arcWorld; }
+            get { return _graphWorld; }
         }
-        public short ArcWorldID
+        public short GraphWorldID
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get { return _arcWorld.id; }
-        }
-        public bool IsLoop
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get { return _isLoop; }
+            get { return _graphWorld.id; }
         }
         public int Count
         {
@@ -67,43 +57,23 @@ namespace DCFApixels.DragonECS
         #endregion
 
         #region Constructors/Destroy
-        internal EcsArc(EcsWorld startWorld, EcsWorld endWorld, EcsArcWorld arcWorld)
+        internal EcsGraph(EcsWorld world, EcsWorld graphWorld)
         {
-            _startWorld = startWorld;
-            _endWorld = endWorld;
-            _arcWorld = arcWorld;
+            _world = world;
+            _graphWorld = graphWorld;
 
-            _isLoop = startWorld == endWorld;
+            _relEntityInfos = new RelationInfo[_graphWorld.Capacity];
+            _matrix = new SparseMatrix(_graphWorld.Capacity);
 
-            _relEntityInfos = new RelationInfo[arcWorld.Capacity];
-            _matrix = new SparseMatrix(arcWorld.Capacity);
-
-            _arcWorldHandler = new ArcWorldHandler(this);
-            if (_isLoop)
-            {
-                _loopWorldHandler = new LoopWorldHandler(this);
-            }
-            else
-            {
-                _startWorldHandler = new StartWorldHandler(this);
-                _endWorldHandler = new EndWorldHandler(this);
-            }
+            _arcWorldHandler = new GraphWorldHandler(this);
+            _loopWorldHandler = new WorldHandler(this);
 
             _isInit = true;
         }
         public void Destroy()
         {
             _arcWorldHandler.Destroy();
-            if (_isLoop)
-            {
-                _loopWorldHandler.Destroy();
-            }
-            else
-            {
-                _startWorldHandler.Destroy();
-                _endWorldHandler.Destroy();
-            }
-
+            _loopWorldHandler.Destroy();
         }
         #endregion
 
@@ -125,7 +95,7 @@ namespace DCFApixels.DragonECS
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private int NewRelationInternal(int startEntityID, int endEntityID)
         {
-            int relEntityID = _arcWorld.NewEntity();
+            int relEntityID = _graphWorld.NewEntity();
             _matrix.Add(startEntityID, endEntityID, relEntityID);
             _relEntityInfos[relEntityID] = new RelationInfo(startEntityID, endEntityID);
             _count++;
@@ -158,7 +128,7 @@ namespace DCFApixels.DragonECS
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void DelRelation(int relEntityID)
         {
-            _arcWorld.TryDelEntity(relEntityID);
+            _graphWorld.TryDelEntity(relEntityID);
             //ClearRelation_Internal(relEntityID);
         }
 
@@ -213,30 +183,18 @@ namespace DCFApixels.DragonECS
         }
         #endregion
 
-        #region Other
-        public EcsArc GetInversetArc()
+        #region GraphWorldHandler
+        private class GraphWorldHandler : IEcsWorldEventListener
         {
-            return _endWorld.GetArc(_startWorld);
-        }
-        public bool TryGetInversetArc(out EcsArc arc)
-        {
-            return _endWorld.TryGetArc(_startWorld, out arc);
-        }
-        #endregion
-
-
-        #region VertexWorldHandler
-        private class ArcWorldHandler : IEcsWorldEventListener
-        {
-            private readonly EcsArc _arc;
-            public ArcWorldHandler(EcsArc arc)
+            private readonly EcsGraph _arc;
+            public GraphWorldHandler(EcsGraph arc)
             {
                 _arc = arc;
-                _arc.ArcWorld.AddListener(this);
+                _arc.GraphWorld.AddListener(this);
             }
             public void Destroy()
             {
-                _arc.ArcWorld.RemoveListener(this);
+                _arc.GraphWorld.RemoveListener(this);
             }
             #region Callbacks
             public void OnReleaseDelEntityBuffer(ReadOnlySpan<int> relEntityBuffer)
@@ -253,25 +211,25 @@ namespace DCFApixels.DragonECS
             }
             #endregion
         }
+        #endregion
 
-        #region Loop
-        private class LoopWorldHandler : IEcsWorldEventListener
+        #region WorldHandler
+        private class WorldHandler : IEcsWorldEventListener
         {
-            private readonly EcsArc _arc;
-            public LoopWorldHandler(EcsArc arc)
+            private readonly EcsGraph _arc;
+            public WorldHandler(EcsGraph arc)
             {
                 _arc = arc;
-                _arc.StartWorld.AddListener(this);
-                //OnWorldResize(_arc.StartWorld.Capacity);
+                _arc.World.AddListener(this);
             }
             public void Destroy()
             {
-                _arc.StartWorld.RemoveListener(this);
+                _arc.World.RemoveListener(this);
             }
             #region Callbacks
             public void OnReleaseDelEntityBuffer(ReadOnlySpan<int> startEntityBuffer)
             {
-                var graph = _arc.ArcWorld.GetExecutor<EcsJoinToGraphExecutor<EmptyAspect>>().Execute();
+                var graph = _arc.GraphWorld.JoinToSubGraph(EcsSubGraphMode.All);
                 foreach (var e in startEntityBuffer)
                 {
                     var span = graph.GetNodes(e);
@@ -280,61 +238,12 @@ namespace DCFApixels.DragonECS
                         _arc.DelRelation(relE);
                     }
                 }
-                _arc._arcWorld.ReleaseDelEntityBufferAll();
+                _arc._graphWorld.ReleaseDelEntityBufferAll();
             }
             public void OnWorldDestroy() { }
             public void OnWorldResize(int startWorldNewSize) { }
             #endregion
         }
-        #endregion
-
-        #region StartEnd
-        private class StartWorldHandler : IEcsWorldEventListener
-        {
-            private readonly EcsArc _arc;
-            public StartWorldHandler(EcsArc arc)
-            {
-                _arc = arc;
-                _arc.StartWorld.AddListener(this);
-                //OnWorldResize(_arc.StartWorld.Capacity);
-            }
-            public void Destroy()
-            {
-                _arc.StartWorld.RemoveListener(this);
-            }
-            #region Callbacks
-            public void OnReleaseDelEntityBuffer(ReadOnlySpan<int> startEntityBuffer)
-            {
-                _arc._arcWorld.ReleaseDelEntityBufferAll();
-            }
-            public void OnWorldDestroy() { }
-            public void OnWorldResize(int startWorldNewSize) { }
-            #endregion
-        }
-        private class EndWorldHandler : IEcsWorldEventListener
-        {
-            private readonly EcsArc _arc;
-            public EndWorldHandler(EcsArc arc)
-            {
-                _arc = arc;
-                _arc.EndWorld.AddListener(this);
-                //OnWorldResize(_arc.EndWorld.Capacity);
-            }
-            public void Destroy()
-            {
-                _arc.EndWorld.RemoveListener(this);
-            }
-            #region Callbacks
-            public void OnReleaseDelEntityBuffer(ReadOnlySpan<int> endEntityBuffer)
-            {
-                _arc._arcWorld.ReleaseDelEntityBufferAll();
-            }
-            public void OnWorldDestroy() { }
-            public void OnWorldResize(int endWorldNewSize) { }
-            #endregion
-        }
-        #endregion
-
         #endregion
     }
 }
