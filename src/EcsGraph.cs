@@ -77,7 +77,7 @@ namespace DCFApixels.DragonECS
         }
         #endregion
 
-        #region New
+        #region New/Convert
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int NewRelation(int startEntityID, int endEntityID)
         {
@@ -96,18 +96,53 @@ namespace DCFApixels.DragonECS
         private int NewRelationInternal(int startEntityID, int endEntityID)
         {
             int relEntityID = _graphWorld.NewEntity();
+            ConvertToRelationInternal(relEntityID, startEntityID, endEntityID);
+            return relEntityID;
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void ConvertToRelation(int entityID, int startEntityID, int endEntityID)
+        {
+            if (IsRelation(entityID))
+            {
+                Throw.UndefinedException();
+            }
+            ConvertToRelationInternal(entityID, startEntityID, endEntityID);
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void ConvertToRelationInternal(int relEntityID, int startEntityID, int endEntityID)
+        {
             _matrix.Add(startEntityID, endEntityID, relEntityID);
             _relEntityInfos[relEntityID] = new RelationInfo(startEntityID, endEntityID);
             _count++;
-            return relEntityID;
         }
         #endregion
 
-        #region Has
+        #region Inverse
+        public int GetInverseRelation(int relEntityID)
+        {
+            if (relEntityID <= 0 || relEntityID >= _relEntityInfos.Length)
+            {
+                Throw.UndefinedException();
+            }
+            var x = _relEntityInfos[relEntityID];
+            return GetOrNewRelation(x.end, x.start);
+        }
+        #endregion
+
+        #region Has/Is
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool HasRelation(int startEntityID, int endEntityID)
         {
             return _matrix.HasKey(startEntityID, endEntityID);
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool IsRelation(int relEntityID)
+        {
+            if (relEntityID <= 0 || relEntityID >= _relEntityInfos.Length)
+            {
+                return false;
+            }
+            return !_relEntityInfos[relEntityID].IsNull;
         }
         #endregion
 
@@ -133,7 +168,7 @@ namespace DCFApixels.DragonECS
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void ClearRelation_Internal(int relEntityID)
+        internal void ClearRelation_Internal(int relEntityID)
         {
             ref RelationInfo info = ref _relEntityInfos[relEntityID];
             if (_matrix.TryDel(info.start, info.end))
@@ -145,15 +180,7 @@ namespace DCFApixels.DragonECS
         #endregion
 
         #region ArcEntityInfo
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool IsRelation(int relEntityID)
-        {
-            if (relEntityID <= 0 || relEntityID >= _relEntityInfos.Length)
-            {
-                return false;
-            }
-            return !_relEntityInfos[relEntityID].IsNull;
-        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public StartEnd GetRelationStartEnd(int relEntityID)
         {

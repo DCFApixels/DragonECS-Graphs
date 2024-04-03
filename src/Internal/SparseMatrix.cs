@@ -332,7 +332,7 @@ namespace DCFApixels.DragonECS.Graphs.Internal
                 this.yHash = yHash;
             }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static Key FromXY(int x, int y) 
+            public static Key FromXY(int x, int y)
             {
                 unchecked
                 {

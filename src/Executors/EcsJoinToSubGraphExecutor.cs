@@ -50,6 +50,11 @@ namespace DCFApixels.DragonECS
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return _lastWorldVersion; }
         }
+        public EcsGraph Graph
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get { return _graph; }
+        }
         #endregion
 
         #region OnInitialize/OnDestroy
@@ -210,7 +215,7 @@ namespace DCFApixels.DragonECS
         }
         #endregion
     }
-    
+
     public enum EcsSubGraphMode
     {
         NONE = 0,
@@ -293,9 +298,13 @@ namespace DCFApixels.DragonECS
     {
         private readonly EcsJoinToSubGraphExecutor _executer;
         private readonly EcsSpan _startEntities;
-        public EcsSpan StartEntitiesSpan
+        public EcsSpan FromEntitiesSpan
         {
             get { return _startEntities; }
+        }
+        public EcsGraph Graph
+        {
+            get { return _executer.Graph; }
         }
         internal EcsSubGraph(EcsJoinToSubGraphExecutor executer, EcsSpan startEntites)
         {
