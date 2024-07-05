@@ -346,15 +346,19 @@ namespace DCFApixels.DragonECS.Graphs.Internal
                 x ^= x >> 17;
                 return x;
             }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            internal static bool EqualsInFind(Key a, Key b) { return a.x == b.x; }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static bool operator ==(Key a, Key b) { return a.x == b.x && a.yHash == b.yHash; }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static bool operator !=(Key a, Key b) { return a.x != b.x || a.yHash != b.yHash; }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public override int GetHashCode() { return yHash; }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool Equals(Key other) { return this == other; }
             public override bool Equals(object obj) { return obj is Key && Equals((Key)obj); }
-            public override string ToString()
-            {
-                return $"({x}, {yHash})";
-            }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public override string ToString() { return $"({x}, {yHash})"; }
         }
         #endregion
     }

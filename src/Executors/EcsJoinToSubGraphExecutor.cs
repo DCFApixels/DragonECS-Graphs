@@ -7,7 +7,7 @@ using System.Runtime.CompilerServices;
 namespace DCFApixels.DragonECS
 {
     public sealed class EcsJoinToSubGraphExecutor<TAspect> : EcsJoinToSubGraphExecutor
-        where TAspect : EcsAspect
+        where TAspect : EcsAspect, new()
     {
         private TAspect _aspect;
 
@@ -362,18 +362,18 @@ namespace DCFApixels.DragonECS
 
         #region JoinToGraph
         public static EcsSubGraph JoinToSubGraph<TCollection, TAspect>(this TCollection entities, out TAspect aspect, EcsSubGraphMode mode = EcsSubGraphMode.StartToEnd)
-            where TAspect : EcsAspect
+            where TAspect : EcsAspect, new()
             where TCollection : IEntityStorage
         {
             return entities.ToSpan().JoinToSubGraph(out aspect, mode);
         }
         public static EcsSubGraph JoinToSubGraph<TAspect>(this EcsReadonlyGroup group, out TAspect aspect, EcsSubGraphMode mode = EcsSubGraphMode.StartToEnd)
-            where TAspect : EcsAspect
+            where TAspect : EcsAspect, new()
         {
             return group.ToSpan().JoinToSubGraph(out aspect, mode);
         }
         public static EcsSubGraph JoinToSubGraph<TAspect>(this EcsSpan span, out TAspect aspect, EcsSubGraphMode mode = EcsSubGraphMode.StartToEnd)
-            where TAspect : EcsAspect
+            where TAspect : EcsAspect, new()
         {
             EcsWorld world = span.World;
             if (world.IsEnableReleaseDelEntBuffer)
