@@ -6,28 +6,7 @@ using System.Runtime.CompilerServices;
 
 namespace DCFApixels.DragonECS
 {
-    public sealed class EcsJoinToSubGraphExecutor<TAspect> : EcsJoinToSubGraphExecutor
-        where TAspect : EcsAspect, new()
-    {
-        private TAspect _aspect;
-
-        #region Properties
-        public TAspect Aspect
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get { return _aspect; }
-        }
-        protected override EcsAspect AspectRaw
-        {
-            get
-            {
-                if (_aspect == null) { _aspect = World.GetAspect<TAspect>(); }
-                return _aspect;
-            }
-        }
-        #endregion
-    }
-    public abstract class EcsJoinToSubGraphExecutor : EcsQueryExecutor, IEcsWorldEventListener
+    public sealed class EcsJoinToSubGraphExecutor : EcsQueryExecutor, IEcsWorldEventListener
     {
         private EcsAspect _aspect;
 
@@ -44,7 +23,6 @@ namespace DCFApixels.DragonECS
         private EcsProfilerMarker _executeMarker = new EcsProfilerMarker("JoinAttach");
 
         #region Properties
-        protected abstract EcsAspect AspectRaw { get; }
         public sealed override long Version
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -63,7 +41,6 @@ namespace DCFApixels.DragonECS
             _linkedList = new EntityLinkedList(World.Capacity);
             _baskets = new Basket[World.Capacity];
             World.AddListener(this);
-            _aspect = AspectRaw;
             _graph = World.GetGraph();
         }
         protected override void OnDestroy()
@@ -110,8 +87,8 @@ namespace DCFApixels.DragonECS
                     }
                     else
                     {
-                        var iterator = _aspect.GetIteratorFor(span);
-                        foreach (var relationEntityID in iterator) { AddStart(relationEntityID); }
+                        var iterator = _aspect.Mask.GetIterator();
+                        foreach (var relationEntityID in iterator.Iterate(span)) { AddStart(relationEntityID); }
                     }
                 }
                 if ((mode & EcsSubGraphMode.EndToStart) != 0)
@@ -122,8 +99,8 @@ namespace DCFApixels.DragonECS
                     }
                     else
                     {
-                        var iterator = _aspect.GetIteratorFor(span);
-                        foreach (var relationEntityID in iterator) { AddEnd(relationEntityID); }
+                        var iterator = _aspect.Mask.GetIterator();
+                        foreach (var relationEntityID in iterator.Iterate(span)) { AddEnd(relationEntityID); }
                     }
                 }
 
@@ -354,11 +331,10 @@ namespace DCFApixels.DragonECS
             {
                 world.ReleaseDelEntityBufferAll();
             }
-            var executor = world.GetExecutor<EcsJoinToSubGraphExecutor<EmptyAspect>>();
+            world.GetQueryCache(out EcsJoinToSubGraphExecutor executor, out EmptyAspect _);
             return executor.ExecuteFor(span, mode);
         }
         #endregion
-
 
         #region JoinToGraph
         public static EcsSubGraph JoinToSubGraph<TCollection, TAspect>(this TCollection entities, out TAspect aspect, EcsSubGraphMode mode = EcsSubGraphMode.StartToEnd)
@@ -380,8 +356,7 @@ namespace DCFApixels.DragonECS
             {
                 world.ReleaseDelEntityBufferAll();
             }
-            var executor = world.GetExecutor<EcsJoinToSubGraphExecutor<TAspect>>();
-            aspect = executor.Aspect;
+            world.GetQueryCache(out EcsJoinToSubGraphExecutor executor, out aspect);
             return executor.ExecuteFor(span, mode);
         }
         #endregion
