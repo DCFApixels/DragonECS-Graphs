@@ -8,8 +8,6 @@ namespace DCFApixels.DragonECS
 {
     public sealed class EcsJoinToSubGraphExecutor : EcsQueryExecutor, IEcsWorldEventListener
     {
-        private EcsAspect _aspect;
-
         private EntityLinkedList _linkedList;
         private Basket[] _baskets;
         private int[] _startEntities;
@@ -21,6 +19,8 @@ namespace DCFApixels.DragonECS
 
         private int _targetWorldCapacity = -1;
         private EcsProfilerMarker _executeMarker = new EcsProfilerMarker("JoinAttach");
+
+        private EcsMaskIterator _iterator;
 
         #region Properties
         public sealed override long Version
@@ -42,6 +42,7 @@ namespace DCFApixels.DragonECS
             _baskets = new Basket[World.Capacity];
             World.AddListener(this);
             _graph = World.GetGraph();
+            _iterator = Mask.GetIterator();
         }
         protected override void OnDestroy()
         {
@@ -81,26 +82,24 @@ namespace DCFApixels.DragonECS
 
                 if ((mode & EcsSubGraphMode.StartToEnd) != 0)
                 {
-                    if (_aspect.Mask.IsEmpty)
+                    if (Mask.IsEmpty)
                     {
                         foreach (var relationEntityID in span) { AddStart(relationEntityID); }
                     }
                     else
                     {
-                        var iterator = _aspect.Mask.GetIterator();
-                        foreach (var relationEntityID in iterator.Iterate(span)) { AddStart(relationEntityID); }
+                        foreach (var relationEntityID in _iterator.Iterate(span)) { AddStart(relationEntityID); }
                     }
                 }
                 if ((mode & EcsSubGraphMode.EndToStart) != 0)
                 {
-                    if (_aspect.Mask.IsEmpty)
+                    if (Mask.IsEmpty)
                     {
                         foreach (var relationEntityID in span) { AddEnd(relationEntityID); }
                     }
                     else
                     {
-                        var iterator = _aspect.Mask.GetIterator();
-                        foreach (var relationEntityID in iterator.Iterate(span)) { AddEnd(relationEntityID); }
+                        foreach (var relationEntityID in _iterator.Iterate(span)) { AddEnd(relationEntityID); }
                     }
                 }
 
