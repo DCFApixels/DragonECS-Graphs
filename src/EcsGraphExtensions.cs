@@ -9,7 +9,7 @@ namespace DCFApixels.DragonECS
 
         public static EcsGraph CreateGraph(this EcsWorld self, EcsWorld graphWorld)
         {
-            int worldID = self.id;
+            int worldID = self.ID;
             if (_worldGraphs.Length <= worldID)
             {
                 Array.Resize(ref _worldGraphs, worldID + 4);
@@ -21,13 +21,13 @@ namespace DCFApixels.DragonECS
             }
             graph = new EcsGraph(self, graphWorld);
             new Destroyer(graph);
-            _worldGraphs[graphWorld.id] = graph;
+            _worldGraphs[graphWorld.ID] = graph;
             return graph;
         }
 
         public static EcsGraph CreateOrGetGraph(this EcsWorld self, EcsWorld graphWorld)
         {
-            int worldID = self.id;
+            int worldID = self.ID;
             if (_worldGraphs.Length <= worldID)
             {
                 Array.Resize(ref _worldGraphs, worldID + 4);
@@ -39,13 +39,13 @@ namespace DCFApixels.DragonECS
             }
             graph = new EcsGraph(self, graphWorld);
             new Destroyer(graph);
-            _worldGraphs[graphWorld.id] = graph;
+            _worldGraphs[graphWorld.ID] = graph;
             return graph;
         }
 
         public static bool TryGetGraph(this EcsWorld self, out EcsGraph graph)
         {
-            int worldID = self.id;
+            int worldID = self.ID;
             if (_worldGraphs.Length <= worldID)
             {
                 Array.Resize(ref _worldGraphs, worldID + 4);

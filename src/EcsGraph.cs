@@ -37,7 +37,7 @@ namespace DCFApixels.DragonECS
         public short WorldID
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get { return _world.id; }
+            get { return _world.ID; }
         }
         public EcsWorld GraphWorld
         {
@@ -47,7 +47,7 @@ namespace DCFApixels.DragonECS
         public short GraphWorldID
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get { return _graphWorld.id; }
+            get { return _graphWorld.ID; }
         }
         public int Count
         {
