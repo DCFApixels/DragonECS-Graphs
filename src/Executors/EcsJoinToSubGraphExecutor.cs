@@ -1,4 +1,5 @@
-﻿using DCFApixels.DragonECS.Graphs.Internal;
+﻿using DCFApixels.DragonECS.Core;
+using DCFApixels.DragonECS.Graphs.Internal;
 using DCFApixels.DragonECS.UncheckedCore;
 using System;
 using System.Collections.Generic;
@@ -6,7 +7,7 @@ using System.Runtime.CompilerServices;
 
 namespace DCFApixels.DragonECS
 {
-    public sealed class EcsJoinToSubGraphExecutor : EcsQueryExecutor, IEcsWorldEventListener
+    public sealed class EcsJoinToSubGraphExecutor : MaskQueryExecutor, IEcsWorldEventListener
     {
         private EntityLinkedList _linkedList;
         private Basket[] _baskets;
@@ -32,6 +33,10 @@ namespace DCFApixels.DragonECS
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return _graph; }
+        }
+        public override bool IsCached
+        {
+            get { throw new NotImplementedException(); }
         }
         #endregion
 

@@ -1,9 +1,10 @@
-﻿using System;
+﻿using DCFApixels.DragonECS.Core;
+using System;
 using System.Runtime.CompilerServices;
 
 namespace DCFApixels.DragonECS
 {
-    public class EcsJoinExecutor : EcsQueryExecutor, IEcsWorldEventListener
+    public class EcsJoinExecutor : MaskQueryExecutor, IEcsWorldEventListener
     {
         private long _lastWorldVersion;
 
@@ -12,6 +13,10 @@ namespace DCFApixels.DragonECS
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => _lastWorldVersion;
+        }
+        public override bool IsCached
+        {
+            get { throw new NotImplementedException(); }
         }
         #endregion
 
