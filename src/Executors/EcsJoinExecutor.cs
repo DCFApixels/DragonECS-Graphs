@@ -16,7 +16,11 @@ namespace DCFApixels.DragonECS
         }
         public override bool IsCached
         {
-            get { throw new NotImplementedException(); }
+            get { return false; }
+        }
+        public override int LastCachedCount
+        {
+            get { return 0; }
         }
         #endregion
 
