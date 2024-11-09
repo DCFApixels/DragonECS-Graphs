@@ -272,5 +272,9 @@ namespace DCFApixels.DragonECS
             #endregion
         }
         #endregion
+
+        #region Other
+        public static implicit operator EcsGraph(SingletonMarker marker) { return marker.Builder.World.GetGraph(); }
+        #endregion
     }
 }
