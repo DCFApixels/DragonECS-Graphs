@@ -70,64 +70,6 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         }
         #endregion
 
-        #region TMP
-        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //public void Resize(int newCapacity)
-        //{
-        //    Array.Resize(ref _nodes, newCapacity * 2 + 10);
-        //}
-
-        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //public void Set(HeadIndex nodeIndex, int entityID)
-        //{
-        //    _nodes[(int)nodeIndex].entityID = entityID;
-        //}
-
-        ///// <returns> new node index</returns>
-        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //public NodeID InsertBefore(NodeID nodeIndex, int entityID)
-        //{
-        //    NodeID newNode = (NodeID)(++_count);
-        //    _nodes[(int)newNode] = _nodes[(int)nodeIndex];
-        //    _nodes[(int)newNode].Set(entityID, nodeIndex);
-        //    return newNode;
-        //}
-        ///// <returns> new node index</returns>
-        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //public NodeID InsertAfter(NodeID nodeIndex, int entityID)
-        //{
-        //    NodeID newNode = (NodeID)(++_count);
-        //    _nodes[(int)nodeIndex].next = newNode;
-        //    _nodes[(int)newNode].Set(entityID, _nodes[(int)nodeIndex].next);
-        //    _lastNodeIndex = newNode;
-        //    return newNode;
-        //
-        //    //_nodes[++_count].Set(entityID, _nodes[(int)nodeIndex].next);
-        //    //_nodes[(int)nodeIndex].next = (NodeID)_count;
-        //    //_lastNodeIndex = (NodeID)((int)nodeIndex + 1);
-        //    //return (NodeID)_count;
-        //}
-        /// <returns> new node index</returns>
-        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //public NodeID Add(int entityID)
-        //{
-        //    var result = InsertAfter(_lastNodeIndex, entityID);
-        //    _lastNodeIndex = (NodeID)_count;
-        //    return result;
-        //}
-
-        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //public EcsJoinedSpan GetSpan(int startNodeIndex, int count)
-        //{
-        //    return new EcsJoinedSpan(_nodes, startNodeIndex, count);
-        //}
-        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //public EcsJoinedSpan GetEmptySpan()
-        //{
-        //    return new EcsJoinedSpan(_nodes, 0, 0);
-        //}
-        #endregion
-
         #region Utils
         public enum NodeIndex : int { }
 

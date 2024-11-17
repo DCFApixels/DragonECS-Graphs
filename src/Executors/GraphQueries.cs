@@ -5,11 +5,23 @@ namespace DCFApixels.DragonECS
     public static class GraphQueries
     {
         #region JoinToGraph Empty
+        public static EcsSubGraph JoinToSubGraph(this EcsWorld entities, EcsSubGraphMode mode = EcsSubGraphMode.StartToEnd)
+        {
+            entities.GetQueryCache(out JoinToSubGraphExecutor executor, out EmptyAspect _);
+            return executor.Execute(mode);
+        }
+
         //public static EcsSubGraph JoinToSubGraph<TCollection>(this TCollection entities, EcsSubGraphMode mode = EcsSubGraphMode.StartToEnd)
         //    where TCollection : IEntityStorage
         //{
-        //    return entities.ToSpan().JoinToSubGraph(mode);
+        //    if (ReferenceEquals(entities, entities.World))
+        //    {
+        //        entities.World.GetQueryCache(out JoinToSubGraphExecutor executor, out EmptyAspect _);
+        //        return executor.Execute(mode);
+        //    }
+        //    return entities.ToSpan().JoinToSubGraph(out EmptyAspect _, mode);
         //}
+
         //public static EcsSubGraph JoinToSubGraph(this EcsReadonlyGroup group, EcsSubGraphMode mode = EcsSubGraphMode.StartToEnd)
         //{
         //    return group.ToSpan().JoinToSubGraph(mode);
@@ -27,17 +39,6 @@ namespace DCFApixels.DragonECS
         #endregion
 
         #region JoinToGraph
-        public static EcsSubGraph JoinToSubGraph<TCollection>(this TCollection entities, EcsSubGraphMode mode = EcsSubGraphMode.StartToEnd)
-            where TCollection : IEntityStorage
-        {
-            if (ReferenceEquals(entities, entities.World))
-            {
-                entities.World.GetQueryCache(out JoinToSubGraphExecutor executor, out EmptyAspect _);
-                return executor.Execute(mode);
-            }
-            return entities.ToSpan().JoinToSubGraph(out EmptyAspect _, mode);
-        }
-
         public static EcsSubGraph JoinToSubGraph<TCollection, TAspect>(this TCollection entities, out TAspect aspect, EcsSubGraphMode mode = EcsSubGraphMode.StartToEnd)
             where TAspect : EcsAspect, new()
             where TCollection : IEntityStorage

@@ -280,7 +280,6 @@ namespace DCFApixels.DragonECS
                 EcsSubGraph subGraph;
                 EcsWorld graphWorld = _graph._graphWorld;
 
-                //subGraph = graphWorld.JoinToSubGraph(EcsSubGraphMode.StartToEnd);
                 subGraph = graphWorld.JoinToSubGraph(EcsSubGraphMode.All);
                 foreach (var sourceE in delEntities)
                 {
@@ -291,17 +290,6 @@ namespace DCFApixels.DragonECS
                         _graph.DelRelation(relE);
                     }
                 }
-
-                //subGraph = graphWorld.JoinToSubGraph(EcsSubGraphMode.EndToStart);
-                //foreach (var sourceE in delEntities)
-                //{
-                //    var relEs = subGraph.GetRelations(sourceE);
-                //    foreach (var relE in relEs)
-                //    {
-                //        //int missingE = graphWorld.NewEntity();
-                //        _graph.DelRelation(relE);
-                //    }
-                //}
 
                 graphWorld.ReleaseDelEntityBufferAll();
             }
