@@ -1,8 +1,9 @@
-﻿using DCFApixels.DragonECS.Graphs.Internal;
+﻿using DCFApixels.DragonECS.Core;
+using DCFApixels.DragonECS.Graphs.Internal;
 
 namespace DCFApixels.DragonECS
 {
-    public static class GraphQueries
+    public static class GraphQueriesExtensions
     {
         #region JoinToGraph Empty
         public static EcsSubGraph JoinToSubGraph(this EcsWorld entities, EcsSubGraphMode mode = EcsSubGraphMode.StartToEnd)
@@ -36,6 +37,28 @@ namespace DCFApixels.DragonECS
         //    world.GetQueryCache(out EcsJoinToSubGraphExecutor executor, out EmptyAspect _);
         //    return executor.ExecuteFor(span, mode);
         //}
+        #endregion
+
+        #region JoinToGraph Mask
+        public static EcsSubGraph JoinToSubGraph<TCollection>(this TCollection entities, IComponentMask mask, EcsSubGraphMode mode = EcsSubGraphMode.StartToEnd)
+            where TCollection : IEntityStorage
+        {
+            if (ReferenceEquals(entities, entities.World))
+            {
+                var executor = entities.World.GetExecutorForMask<JoinToSubGraphExecutor>(mask);
+                return executor.Execute();
+            }
+            return entities.ToSpan().JoinToSubGraph(mask, mode);
+        }
+        public static EcsSubGraph JoinToSubGraph(this EcsReadonlyGroup group, IComponentMask mask, EcsSubGraphMode mode = EcsSubGraphMode.StartToEnd)
+        {
+            return group.ToSpan().JoinToSubGraph(mask, mode);
+        }
+        public static EcsSubGraph JoinToSubGraph(this EcsSpan span, IComponentMask mask, EcsSubGraphMode mode = EcsSubGraphMode.StartToEnd)
+        {
+            var executor = span.World.GetExecutorForMask<JoinToSubGraphExecutor>(mask);
+            return executor.ExecuteFor(span, mode);
+        }
         #endregion
 
         #region JoinToGraph
