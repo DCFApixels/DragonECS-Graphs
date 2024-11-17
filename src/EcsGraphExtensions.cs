@@ -5,45 +5,45 @@ namespace DCFApixels.DragonECS
 {
     public static class EcsGraphExtensions
     {
-        private static EcsGraph[] _worldGraphs = new EcsGraph[4];
+        private static EntityGraph[] _worldGraphs = new EntityGraph[4];
 
-        public static EcsGraph CreateGraph(this EcsWorld self, EcsWorld graphWorld)
+        public static EntityGraph CreateGraph(this EcsWorld self, EcsWorld graphWorld)
         {
             int worldID = self.ID;
             if (_worldGraphs.Length <= worldID)
             {
                 Array.Resize(ref _worldGraphs, worldID + 4);
             }
-            ref EcsGraph graph = ref _worldGraphs[worldID];
+            ref EntityGraph graph = ref _worldGraphs[worldID];
             if (graph != null)
             {
                 Throw.UndefinedException();
             }
-            graph = new EcsGraph(self, graphWorld);
+            graph = new EntityGraph(self, graphWorld);
             new Destroyer(graph);
             _worldGraphs[graphWorld.ID] = graph;
             return graph;
         }
 
-        public static EcsGraph CreateOrGetGraph(this EcsWorld self, EcsWorld graphWorld)
+        public static EntityGraph CreateOrGetGraph(this EcsWorld self, EcsWorld graphWorld)
         {
             int worldID = self.ID;
             if (_worldGraphs.Length <= worldID)
             {
                 Array.Resize(ref _worldGraphs, worldID + 4);
             }
-            ref EcsGraph graph = ref _worldGraphs[worldID];
+            ref EntityGraph graph = ref _worldGraphs[worldID];
             if (graph != null)
             {
                 return graph;
             }
-            graph = new EcsGraph(self, graphWorld);
+            graph = new EntityGraph(self, graphWorld);
             new Destroyer(graph);
             _worldGraphs[graphWorld.ID] = graph;
             return graph;
         }
 
-        public static bool TryGetGraph(this EcsWorld self, out EcsGraph graph)
+        public static bool TryGetGraph(this EcsWorld self, out EntityGraph graph)
         {
             int worldID = self.ID;
             if (_worldGraphs.Length <= worldID)
@@ -54,9 +54,9 @@ namespace DCFApixels.DragonECS
             return graph != null;
         }
 
-        public static EcsGraph GetGraph(this EcsWorld self)
+        public static EntityGraph GetGraph(this EcsWorld self)
         {
-            if (self.TryGetGraph(out EcsGraph graph))
+            if (self.TryGetGraph(out EntityGraph graph))
             {
                 return graph;
             }
@@ -66,14 +66,14 @@ namespace DCFApixels.DragonECS
 
         public static bool IsGraphWorld(this EcsWorld self)
         {
-            if (self.TryGetGraph(out EcsGraph graph))
+            if (self.TryGetGraph(out EntityGraph graph))
             {
                 return graph.GraphWorld == self;
             }
             return false;
         }
 
-        private static void TryDestroy(EcsGraph graph)
+        private static void TryDestroy(EntityGraph graph)
         {
             int worldID = graph.WorldID;
             if (_worldGraphs.Length <= worldID)
@@ -90,8 +90,8 @@ namespace DCFApixels.DragonECS
         }
         private class Destroyer : IEcsWorldEventListener
         {
-            private EcsGraph _graph;
-            public Destroyer(EcsGraph graph)
+            private EntityGraph _graph;
+            public Destroyer(EntityGraph graph)
             {
                 _graph = graph;
                 graph.World.AddListener(this);

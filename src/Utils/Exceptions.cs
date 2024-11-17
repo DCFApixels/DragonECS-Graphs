@@ -19,9 +19,9 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static void ArgumentNull()
+        internal static void ArgumentNull(string paramName)
         {
-            throw new ArgumentNullException();
+            throw new ArgumentNullException(paramName);
         }
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal static void ArgumentOutOfRange()
@@ -47,6 +47,13 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         internal static void KeyNotFound()
         {
             throw new KeyNotFoundException();
+        }
+
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        internal static void Quiery_ArgumentDifferentWorldsException()
+        {
+            throw new ArgumentException("The groups belong to different worlds.");
         }
     }
 }

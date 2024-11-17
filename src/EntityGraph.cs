@@ -8,7 +8,7 @@ namespace DCFApixels.DragonECS
     //Graph world
     //Rel entity
     //Component
-    public class EcsGraph
+    public class EntityGraph
     {
         private readonly EcsWorld _world;
         private readonly EcsWorld _graphWorld;
@@ -16,12 +16,12 @@ namespace DCFApixels.DragonECS
         private readonly GraphWorldHandler _arcWorldHandler;
         private readonly WorldHandler _loopWorldHandler;
 
-        private RelationInfo[] _relEntityInfos; //N * (N - 1) / 2
         private readonly SparseMatrix _matrix;
-
-        private bool _isInit = false;
+        private RelationInfo[] _relEntityInfos; //N * (N - 1) / 2
 
         private int _count;
+
+        private bool _isInit = false;
 
         #region Properties
         internal bool IsInit_Internal
@@ -57,7 +57,7 @@ namespace DCFApixels.DragonECS
         #endregion
 
         #region Constructors/Destroy
-        internal EcsGraph(EcsWorld world, EcsWorld graphWorld)
+        internal EntityGraph(EcsWorld world, EcsWorld graphWorld)
         {
             _world = world;
             _graphWorld = graphWorld;
@@ -146,6 +146,23 @@ namespace DCFApixels.DragonECS
         }
         #endregion
 
+        #region MoveRelation
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void MoveRelation(int relEntityID, int newStartEntityID, int newEndEntityID)
+        {
+            var startEnd = GetRelationStartEnd(relEntityID);
+
+            //Тут будет не стабильное состояние если TryDel пройдет, а TryAdd - нет
+            if (_matrix.TryDel(startEnd.start, startEnd.end) == false ||
+                _matrix.TryAdd(newStartEntityID, newEndEntityID, relEntityID) == false)
+            {
+                Throw.UndefinedException();
+            }
+
+            _relEntityInfos[relEntityID] = new RelationInfo(newStartEntityID, newEndEntityID);
+        }
+        #endregion
+
         #region Get
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int GetRelation(int startEntityID, int endEntityID)
@@ -179,7 +196,11 @@ namespace DCFApixels.DragonECS
         }
         #endregion
 
-        #region ArcEntityInfo
+        #region Other
+        public static implicit operator EntityGraph(SingletonMarker marker) { return marker.Builder.World.GetGraph(); }
+        #endregion
+
+        #region RelEntityInfo
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public StartEnd GetRelationStartEnd(int relEntityID)
@@ -213,8 +234,8 @@ namespace DCFApixels.DragonECS
         #region GraphWorldHandler
         private class GraphWorldHandler : IEcsWorldEventListener
         {
-            private readonly EcsGraph _arc;
-            public GraphWorldHandler(EcsGraph arc)
+            private readonly EntityGraph _arc;
+            public GraphWorldHandler(EntityGraph arc)
             {
                 _arc = arc;
                 _arc.GraphWorld.AddListener(this);
@@ -243,38 +264,51 @@ namespace DCFApixels.DragonECS
         #region WorldHandler
         private class WorldHandler : IEcsWorldEventListener
         {
-            private readonly EcsGraph _arc;
-            public WorldHandler(EcsGraph arc)
+            private readonly EntityGraph _graph;
+            public WorldHandler(EntityGraph arc)
             {
-                _arc = arc;
-                _arc.World.AddListener(this);
+                _graph = arc;
+                _graph.World.AddListener(this);
             }
             public void Destroy()
             {
-                _arc.World.RemoveListener(this);
+                _graph.World.RemoveListener(this);
             }
             #region Callbacks
-            public void OnReleaseDelEntityBuffer(ReadOnlySpan<int> startEntityBuffer)
+            public void OnReleaseDelEntityBuffer(ReadOnlySpan<int> delEntities)
             {
-                var graph = _arc.GraphWorld.JoinToSubGraph(EcsSubGraphMode.All);
-                foreach (var e in startEntityBuffer)
+                EcsSubGraph subGraph;
+                EcsWorld graphWorld = _graph._graphWorld;
+
+                //subGraph = graphWorld.JoinToSubGraph(EcsSubGraphMode.StartToEnd);
+                subGraph = graphWorld.JoinToSubGraph(EcsSubGraphMode.All);
+                foreach (var sourceE in delEntities)
                 {
-                    var span = graph.GetNodes(e);
-                    foreach (var relE in span)
+                    var relEs = subGraph.GetRelations(sourceE);
+                    foreach (var relE in relEs)
                     {
-                        _arc.DelRelation(relE);
+                        //int missingE = graphWorld.NewEntity();
+                        _graph.DelRelation(relE);
                     }
                 }
-                _arc._graphWorld.ReleaseDelEntityBufferAll();
+
+                //subGraph = graphWorld.JoinToSubGraph(EcsSubGraphMode.EndToStart);
+                //foreach (var sourceE in delEntities)
+                //{
+                //    var relEs = subGraph.GetRelations(sourceE);
+                //    foreach (var relE in relEs)
+                //    {
+                //        //int missingE = graphWorld.NewEntity();
+                //        _graph.DelRelation(relE);
+                //    }
+                //}
+
+                graphWorld.ReleaseDelEntityBufferAll();
             }
             public void OnWorldDestroy() { }
             public void OnWorldResize(int startWorldNewSize) { }
             #endregion
         }
-        #endregion
-
-        #region Other
-        public static implicit operator EcsGraph(SingletonMarker marker) { return marker.Builder.World.GetGraph(); }
         #endregion
     }
 }
