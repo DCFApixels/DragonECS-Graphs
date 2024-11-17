@@ -1,17 +1,20 @@
 {
-    "name": "com.dcfa_pixels.dragonecs-relations",
+    "name": "com.dcfa_pixels.dragonecs-graphs",
     "author": 
     {
         "name": "DCFApixels",
-        "url": "https://github.com/DCFApixels/DragonECS-Relations"
+        "url": "https://github.com/DCFApixels/DragonECS-Graphs"
     },
-    "displayName": "DragonECS-Relations",
-    "description": "Relations between entities for DragonECS",
+    "displayName": "DragonECS-Graphs",
+    "description": "Entity Graphs for DragonECS",
     "unity": "2020.3",
-    "version": "0.1.0",
+    "version": "0.3.0",
     "repository": {
         "type": "git",
-        "url": "https://github.com/DCFApixels/DragonECS-Relations.git"
+        "url": "https://github.com/DCFApixels/DragonECS-Graphs.git"
+    },
+    "dependencies": {
+        "com.dcfa_pixels.dragonecs": "https://github.com/DCFApixels/DragonECS.git" 
     },
     "keywords":
     [
