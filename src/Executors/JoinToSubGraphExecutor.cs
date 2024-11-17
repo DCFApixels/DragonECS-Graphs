@@ -31,7 +31,7 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         private int _sourceEntitiesCount;
 
         private int _targetWorldCapacity = -1;
-        private EcsProfilerMarker _executeMarker = new EcsProfilerMarker("Join");
+        //private EcsProfilerMarker _executeMarker = new EcsProfilerMarker("Join");
 
         public bool _isDestroyed = false;
 
@@ -83,7 +83,7 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private EcsSubGraph Execute_Internal(EcsSubGraphMode mode)
         {
-            _executeMarker.Begin();
+            //_executeMarker.Begin();
 
             World.ReleaseDelEntityBufferAllAuto();
 
@@ -139,16 +139,16 @@ namespace DCFApixels.DragonECS.Graphs.Internal
 
             _version++;
 
-            _executeMarker.End();
+            //_executeMarker.End();
             return new EcsSubGraph(this);
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private EcsSubGraph ExecuteFor_Internal(EcsSpan span, EcsSubGraphMode mode)
         {
-            _executeMarker.Begin();
+            //_executeMarker.Begin();
 #if (DEBUG && !DISABLE_DEBUG) || ENABLE_DRAGONECS_ASSERT_CHEKS
-            if (span.IsNull) { _executeMarker.End(); Throw.ArgumentNull(nameof(span)); }
-            if (span.WorldID != World.ID) { _executeMarker.End(); Throw.Quiery_ArgumentDifferentWorldsException(); }
+            if (span.IsNull) { /*_executeMarker.End();*/ Throw.ArgumentNull(nameof(span)); }
+            if (span.WorldID != World.ID) { /*_executeMarker.End();*/ Throw.Quiery_ArgumentDifferentWorldsException(); }
 #endif
             if (_filteredEntities == null)
             {
@@ -200,7 +200,7 @@ namespace DCFApixels.DragonECS.Graphs.Internal
             }
 
 
-            _executeMarker.End();
+            //_executeMarker.End();
             return new EcsSubGraph(this);
         }
 
