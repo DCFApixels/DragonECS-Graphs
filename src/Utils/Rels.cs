@@ -64,6 +64,8 @@ namespace DCFApixels.DragonECS
         public override string ToString() { return $"arc({start} -> {end})"; }
         #endregion
     }
+    [StructLayout(LayoutKind.Sequential, Pack = 4, Size = 12)]
+    [Serializable]
     public readonly ref struct StartRelEnd
     {
         /// <summary>Start vertex entity ID.</summary>
@@ -118,6 +120,8 @@ namespace DCFApixels.DragonECS
         public override string ToString() { return $"arc({start} --({rel})-> {end})"; }
         #endregion
     }
+    [StructLayout(LayoutKind.Sequential, Pack = 4, Size = 8)]
+    [Serializable]
     public readonly ref struct RelEnd
     {
         /// <summary>Relation entity ID.</summary>
