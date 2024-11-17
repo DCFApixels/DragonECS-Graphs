@@ -1,4 +1,6 @@
-﻿namespace DCFApixels.DragonECS
+﻿using DCFApixels.DragonECS.Graphs.Internal;
+
+namespace DCFApixels.DragonECS
 {
     public static class GraphQueries
     {
@@ -30,7 +32,7 @@
         {
             if (ReferenceEquals(entities, entities.World))
             {
-                entities.World.GetQueryCache(out EcsJoinToSubGraphExecutor executor, out EmptyAspect _);
+                entities.World.GetQueryCache(out JoinToSubGraphExecutor executor, out EmptyAspect _);
                 return executor.Execute(mode);
             }
             return entities.ToSpan().JoinToSubGraph(out EmptyAspect _, mode);
@@ -42,7 +44,7 @@
         {
             if (ReferenceEquals(entities, entities.World))
             {
-                entities.World.GetQueryCache(out EcsJoinToSubGraphExecutor executor, out aspect);
+                entities.World.GetQueryCache(out JoinToSubGraphExecutor executor, out aspect);
                 return executor.Execute();
             }
             return entities.ToSpan().JoinToSubGraph(out aspect, mode);
@@ -55,7 +57,7 @@
         public static EcsSubGraph JoinToSubGraph<TAspect>(this EcsSpan span, out TAspect aspect, EcsSubGraphMode mode = EcsSubGraphMode.StartToEnd)
             where TAspect : EcsAspect, new()
         {
-            span.World.GetQueryCache(out EcsJoinToSubGraphExecutor executor, out aspect);
+            span.World.GetQueryCache(out JoinToSubGraphExecutor executor, out aspect);
             return executor.ExecuteFor(span, mode);
         }
         #endregion
