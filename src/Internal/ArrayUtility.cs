@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -46,64 +43,18 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         {
             return 1 << (GetHighBitNumber((uint)minSize - 1u) + 1);
         }
-        public static void Fill<T>(T[] array, T value, int startIndex = 0, int length = -1)
-        {
-            if (length < 0)
-            {
-                length = array.Length;
-            }
-            else
-            {
-                length = startIndex + length;
-            }
-            for (int i = startIndex; i < length; i++)
-            {
-                array[i] = value;
-            }
-        }
-    }
-    internal readonly struct EnumerableInt : IEnumerable<int>
-    {
-        public readonly int start;
-        public readonly int length;
-        private EnumerableInt(int start, int length)
-        {
-            this.start = start;
-            this.length = length;
-        }
-        public static EnumerableInt Range(int start, int length) => new EnumerableInt(start, length);
-        public static EnumerableInt StartEnd(int start, int end) => new EnumerableInt(start, end - start);
-        IEnumerator<int> IEnumerable<int>.GetEnumerator() => GetEnumerator();
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Enumerator GetEnumerator() => new Enumerator(start, start + length);
-        public struct Enumerator : IEnumerator<int>
-        {
-            private readonly int _max;
-            private int _current;
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public Enumerator(int max, int current)
-            {
-                _max = max;
-                _current = current - 1;
-            }
-            public int Current
-            {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                get => _current;
-            }
-            object IEnumerator.Current => Current;
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public bool MoveNext() => ++_current < _max;
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void Reset() { }
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void Dispose() { }
-        }
     }
     internal static unsafe class UnmanagedArrayUtility
     {
+        private static class MetaCache<T>
+        {
+            public readonly static int Size;
+            static MetaCache()
+            {
+                T def = default;
+                Size = Marshal.SizeOf(def);
+            }
+        }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T* New<T>(int capacity) where T : unmanaged
         {
@@ -112,28 +63,32 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void New<T>(out T* ptr, int capacity) where T : unmanaged
         {
-            ptr = (T*)Marshal.AllocHGlobal(Marshal.SizeOf<T>(default) * capacity).ToPointer();
+            ptr = (T*)Marshal.AllocHGlobal(Marshal.SizeOf<T>() * capacity).ToPointer();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T* NewAndInit<T>(int capacity) where T : unmanaged
         {
-            int newSize = Marshal.SizeOf(typeof(T)) * capacity;
+            int newSize = MetaCache<T>.Size * capacity;
             byte* newPointer = (byte*)Marshal.AllocHGlobal(newSize).ToPointer();
 
             for (int i = 0; i < newSize; i++)
+            {
                 *(newPointer + i) = 0;
+            }
 
             return (T*)newPointer;
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void NewAndInit<T>(out T* ptr, int capacity) where T : unmanaged
         {
-            int newSize = Marshal.SizeOf(typeof(T)) * capacity;
+            int newSize = MetaCache<T>.Size * capacity;
             byte* newPointer = (byte*)Marshal.AllocHGlobal(newSize).ToPointer();
 
             for (int i = 0; i < newSize; i++)
+            {
                 *(newPointer + i) = 0;
+            }
 
             ptr = (T*)newPointer;
         }
@@ -167,12 +122,12 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         {
             return (T*)Marshal.ReAllocHGlobal(
                 new IntPtr(oldPointer),
-                new IntPtr(Marshal.SizeOf<T>(default) * newCount)).ToPointer();
+                new IntPtr(MetaCache<T>.Size * newCount)).ToPointer();
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T* ResizeAndInit<T>(void* oldPointer, int oldSize, int newSize) where T : unmanaged
         {
-            int sizeT = Marshal.SizeOf<T>(default);
+            int sizeT = MetaCache<T>.Size;
             T* result = (T*)Marshal.ReAllocHGlobal(
                 new IntPtr(oldPointer),
                 new IntPtr(sizeT * newSize)).ToPointer();
@@ -187,18 +142,6 @@ namespace DCFApixels.DragonECS.Graphs.Internal
             {
                 *(pointer + i) = 0;
             }
-        }
-    }
-
-    public static class CollectionUtility
-    {
-        public static string EntitiesToString(IEnumerable<int> range, string name)
-        {
-            return $"{name}({range.Count()}) {{{string.Join(", ", range.OrderBy(o => o))}}})";
-        }
-        public static string AutoToString<T>(IEnumerable<T> range, string name)
-        {
-            return $"{name}({range.Count()}) {{{string.Join(", ", range.Select(o => o.ToString()))}}})";
         }
     }
 }

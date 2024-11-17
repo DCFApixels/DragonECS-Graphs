@@ -27,11 +27,14 @@ namespace DCFApixels.DragonECS
         private LinkedList _linkedList;
         private LinkedListHead[] _linkedListSourceHeads;
 
-        private int[] _startEntities;
-        private int _startEntitiesCount;
+        private int[] _sourceEntities;
+        private int _sourceEntitiesCount;
 
         private int _targetWorldCapacity = -1;
         private EcsProfilerMarker _executeMarker = new EcsProfilerMarker("Join");
+
+        public bool _isDestroyed = false;
+
 
         #region Properties
         public sealed override long Version
@@ -62,13 +65,17 @@ namespace DCFApixels.DragonECS
             _versionsChecker = new WorldStateVersionsChecker(Mask);
             _linkedList = new OnlyAppendHeadLinkedList(World.Capacity);
             _linkedListSourceHeads = new LinkedListHead[World.Capacity];
+            _sourceEntities = new int[World.Capacity * 2];
             World.AddListener(this);
             _graph = World.GetGraph();
             _iterator = Mask.GetIterator();
         }
         protected override void OnDestroy()
         {
+            if (_isDestroyed) { return; }
+            _isDestroyed = true;
             World.RemoveListener(this);
+            _versionsChecker.Dispose();
         }
         #endregion
 
@@ -79,23 +86,15 @@ namespace DCFApixels.DragonECS
 
             World.ReleaseDelEntityBufferAllAuto();
 
-            if (Mask.IsEmpty)
+            if (Mask.IsEmpty || _versionsChecker.CheckAndNext() == false)
             {
-                _filteredAllEntitiesCount = World.Entities.ToArray(ref _filteredAllEntities);
-            }
-            else
-            {
-                if (_versionsChecker.CheckAndNext() == false)
+                _filteredAllEntitiesCount = _iterator.IterateTo(World.Entities, ref _filteredAllEntities);
+                //Подготовка массивов
+                if (_sourceEntities.Length < _filteredAllEntitiesCount * 2)
                 {
-                    _filteredAllEntitiesCount = _iterator.IterateTo(World.Entities, ref _filteredAllEntities);
-                    ////Подготовка массивов
-                    //if (_startEntities.Length < _filteredAllEntitiesCount * 2)
-                    //{
-                    //    _startEntities = new int[_filteredAllEntitiesCount * 2];
-                    //}
+                    _sourceEntities = new int[_filteredAllEntitiesCount * 2];
                 }
             }
-
 
             //установка текущего массива
             _currentFilteredEntities = _filteredAllEntities;
@@ -106,13 +105,17 @@ namespace DCFApixels.DragonECS
             {
                 _targetWorldCapacity = World.Capacity;
                 _linkedListSourceHeads = new LinkedListHead[_targetWorldCapacity];
-                _startEntities = new int[_targetWorldCapacity];
+                //_startEntities = new int[_targetWorldCapacity];
             }
             else
             {
-                ArrayUtility.Fill(_linkedListSourceHeads, default); //TODO оптимизировать, сделав не полную отчистку а только по элементов с прошлого раза
+                //ArrayUtility.Fill(_linkedListSourceHeads, default); //TODO оптимизировать, сделав не полную отчистку а только по элементов с прошлого раза
+                for (int i = 0; i < _sourceEntitiesCount; i++)
+                {
+                    _linkedListSourceHeads[_sourceEntities[i]] = default;
+                }
             }
-            _startEntitiesCount = 0;
+            _sourceEntitiesCount = 0;
             _linkedList.Clear();
 
             //Заполнение массивов
@@ -249,7 +252,7 @@ namespace DCFApixels.DragonECS
             ref var basket = ref _linkedListSourceHeads[sourceEntityID];
             if (basket.head == 0)
             {
-                _startEntities[_startEntitiesCount++] = sourceEntityID;
+                _sourceEntities[_sourceEntitiesCount++] = sourceEntityID;
                 basket.head = _linkedList.NewHead(relationEntityID);
             }
             else
@@ -309,7 +312,7 @@ namespace DCFApixels.DragonECS
         #region GetEntites
         internal EcsSpan GetSourceEntities()
         {
-            return UncheckedCoreUtility.CreateSpan(WorldID, _startEntities, _startEntitiesCount);
+            return UncheckedCoreUtility.CreateSpan(WorldID, _sourceEntities, _sourceEntitiesCount);
         }
         internal EcsSpan GetRelEntities()
         {

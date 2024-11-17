@@ -55,7 +55,17 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Equals(RelationInfo other) { return this == other; }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public override int GetHashCode() { return start ^ BitsUtility.NextXorShiftState(end); }
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                uint endHash = (uint)end;
+                endHash ^= endHash << 13;
+                endHash ^= endHash >> 17;
+                endHash ^= endHash << 5;
+                return start ^ (int)endHash;
+            }
+        }
         public override string ToString() { return $"arc({start} -> {end})"; }
         #endregion
     }

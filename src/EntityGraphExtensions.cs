@@ -3,7 +3,7 @@ using System;
 
 namespace DCFApixels.DragonECS
 {
-    public static class EcsGraphExtensions
+    public static class EntityGraphExtensions
     {
         private static EntityGraph[] _worldGraphs = new EntityGraph[4];
 
