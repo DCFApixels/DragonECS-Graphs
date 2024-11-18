@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Threading;
 using TValue = System.Int32;
 
 namespace DCFApixels.DragonECS.Graphs.Internal
@@ -10,12 +11,13 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         public const int MIN_CAPACITY_BITS_OFFSET = 4;
         public const int MIN_CAPACITY = 1 << MIN_CAPACITY_BITS_OFFSET;
 
-
-        private const int MAX_CHAIN_LENGTH = 5;
+        private const int CHAIN_LENGTH_THRESHOLD = 5;
+        private const float CHAIN_LENGTH_THRESHOLD_CAPCITY_THRESHOLD = 0.7f;
 
         private UnsafeArray<Basket> _buckets;
         private UnsafeArray<Entry> _entries;
         private int _capacity;
+        private int _count_Threshold;
 
         private int _count;
 
@@ -54,7 +56,7 @@ namespace DCFApixels.DragonECS.Graphs.Internal
             _freeList = 0;
             _freeCount = 0;
 
-            _capacity = minCapacity;
+            SetCapacity(minCapacity);
         }
         #endregion
 
@@ -69,7 +71,7 @@ namespace DCFApixels.DragonECS.Graphs.Internal
                 Throw.ArgumentException("Has(x, y) is true");
             }
 #endif
-            int targetBucket = key.yHash & _modBitMask;
+            int targetBucket = key.YHash & _modBitMask;
             AddInternal(key, targetBucket, value);
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -80,7 +82,7 @@ namespace DCFApixels.DragonECS.Graphs.Internal
             {
                 return false;
             }
-            int targetBucket = key.yHash & _modBitMask;
+            int targetBucket = key.YHash & _modBitMask;
             AddInternal(key, targetBucket, value);
             return true;
         }
@@ -88,7 +90,7 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         public void Set(int x, int y, TValue value)
         {
             Key key = Key.FromXY(x, y);
-            int targetBucket = key.yHash & _modBitMask;
+            int targetBucket = key.YHash & _modBitMask;
 
             for (int i = _buckets[targetBucket].index; i >= 0; i = _entries[i].next)
             {
@@ -109,9 +111,11 @@ namespace DCFApixels.DragonECS.Graphs.Internal
                 if (_count == _capacity)
                 {
                     Resize();
-                    targetBucket = key.yHash & _modBitMask;
+                    // обновляем под новое значение _modBitMask
+                    targetBucket = key.YHash & _modBitMask;
                 }
-                index = _count++;
+                index = Interlocked.Increment(ref _count);
+                //index = _count++;
             }
             else
             {
@@ -130,10 +134,13 @@ namespace DCFApixels.DragonECS.Graphs.Internal
             entry.next = basket.index;
             entry.key = key;
             entry.value = value;
-            basket.count++;
+            Interlocked.Increment(ref basket.count);
+            //basket.count++;
             basket.index = index;
 
-            if (basket.count >= MAX_CHAIN_LENGTH && Count / Capacity >= 0.7f)
+            if (basket.count >= CHAIN_LENGTH_THRESHOLD &&
+                _count > _count_Threshold)
+                //_count / _capacity >= CHAIN_LENGTH_THRESHOLD_CAPCITY_THRESHOLD)
             {
                 Resize();
             }
@@ -145,7 +152,7 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         private int FindEntry(int x, int y)
         {
             Key key = Key.FromXY(x, y);
-            for (int i = _buckets[key.yHash & _modBitMask].index; i >= 0; i = _entries[i].next)
+            for (int i = _buckets[key.YHash & _modBitMask].index; i >= 0; i = _entries[i].next)
             {
                 if (_entries[i].key == key)
                 {
@@ -157,7 +164,7 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private int FindEntry(Key key)
         {
-            for (int i = _buckets[key.yHash & _modBitMask].index; i >= 0; i = _entries[i].next)
+            for (int i = _buckets[key.YHash & _modBitMask].index; i >= 0; i = _entries[i].next)
             {
                 if (_entries[i].key == key)
                 {
@@ -202,7 +209,7 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         public bool TryDel(int x, int y)
         {
             Key key = Key.FromXY(x, y);
-            int targetBucket = key.yHash & _modBitMask;
+            int targetBucket = key.YHash & _modBitMask;
             ref Basket basket = ref _buckets[targetBucket];
 
             int last = -1;
@@ -269,10 +276,10 @@ namespace DCFApixels.DragonECS.Graphs.Internal
             UnsafeArray<Entry> newEntries = UnsafeArray<Entry>.Resize(_entries, newSize);
             for (int i = 0; i < _count; i++)
             {
-                if (newEntries[i].key.x >= 0)
+                if (newEntries[i].key.X >= 0)
                 {
                     ref Entry entry = ref newEntries[i];
-                    ref Basket basket = ref newBuckets[entry.key.yHash & _modBitMask];
+                    ref Basket basket = ref newBuckets[entry.key.YHash & _modBitMask];
                     entry.next = basket.index;
                     basket.index = i;
                     basket.count++;
@@ -282,7 +289,13 @@ namespace DCFApixels.DragonECS.Graphs.Internal
             _buckets = newBuckets;
             _entries = newEntries;
 
+            SetCapacity(newSize);
+        }
+
+        private void SetCapacity(int newSize)
+        {
             _capacity = newSize;
+            _count_Threshold = (int)(_count_Threshold * CHAIN_LENGTH_THRESHOLD_CAPCITY_THRESHOLD);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -301,7 +314,7 @@ namespace DCFApixels.DragonECS.Graphs.Internal
             public int next;        // Index of next entry, -1 if last
             public Key key;
             public TValue value;
-            public override string ToString() { return key.x == 0 ? "NULL" : $"{key} {value}"; }
+            public override string ToString() { return key.X == 0 ? "NULL" : $"{key} {value}"; }
         }
 
         [StructLayout(LayoutKind.Sequential, Pack = 4, Size = 8)]
@@ -311,54 +324,63 @@ namespace DCFApixels.DragonECS.Graphs.Internal
             public int index;
             public int count;
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public Basket(int index, int length)
+            public Basket(int index, int count)
             {
                 this.index = index;
-                this.count = length;
+                this.count = count;
             }
             public override string ToString() { return index < 0 ? "NULL" : $"{index} {count}"; }
         }
 
-        [StructLayout(LayoutKind.Sequential, Pack = 4, Size = 8)]
+        [StructLayout(LayoutKind.Explicit, Pack = 4, Size = 8)]
         public readonly struct Key : IEquatable<Key>
         {
             public static readonly Key Null = new Key(-1, 0);
-            public readonly int x;
-            public readonly int yHash;
+
+            [FieldOffset(0)]
+            public readonly long Full;
+            [FieldOffset(0)]
+            public readonly int X;
+            [FieldOffset(4)]
+            public readonly int YHash;
+
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            private Key(int x, int yHash)
+            private Key(int x, int yHash) : this()
             {
-                this.x = x;
-                this.yHash = yHash;
+                this.X = x;
+                this.YHash = yHash;
             }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static Key FromXY(int x, int y)
+            public static unsafe Key FromXY(int x, int y)
             {
                 unchecked
                 {
-                    return new Key(x, x ^ y ^ XXX(y));
+                    return new Key(x, x ^ y ^ Mixing(y));
                 }
             }
-            private static int XXX(int x)
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            private static int Mixing(int x)
             {
-                x *= 3571;
-                x ^= x << 13;
-                x ^= x >> 17;
-                return x;
+                unchecked
+                {
+                    x *= 3571;
+                    x ^= x << 13;
+                    x ^= x >> 17;
+                    return x;
+                }
             }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            internal static bool EqualsInFind(Key a, Key b) { return a.x == b.x; }
+            internal static bool EqualsInFind(Key a, Key b) { return a.X == b.X; }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static bool operator ==(Key a, Key b) { return a.x == b.x && a.yHash == b.yHash; }
+            public static bool operator ==(Key a, Key b) { return a.X == b.X && a.YHash == b.YHash; }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static bool operator !=(Key a, Key b) { return a.x != b.x || a.yHash != b.yHash; }
+            public static bool operator !=(Key a, Key b) { return a.X != b.X || a.YHash != b.YHash; }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public override int GetHashCode() { return yHash; }
+            public override int GetHashCode() { return YHash; }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool Equals(Key other) { return this == other; }
             public override bool Equals(object obj) { return obj is Key && Equals((Key)obj); }
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public override string ToString() { return $"({x}, {yHash})"; }
+            public override string ToString() { return $"({X}, {YHash})"; }
         }
         #endregion
     }

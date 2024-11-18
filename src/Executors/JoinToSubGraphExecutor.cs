@@ -90,11 +90,11 @@ namespace DCFApixels.DragonECS.Graphs.Internal
             if (Mask.IsEmpty || _versionsChecker.CheckAndNext() == false)
             {
                 _filteredAllEntitiesCount = _iterator.IterateTo(World.Entities, ref _filteredAllEntities);
-                //Подготовка массивов
-                if (_sourceEntities.Length < _filteredAllEntitiesCount * 2)
+                if (_sourceEntities.Length < _graph.World.Capacity * 2)
                 {
-                    _sourceEntities = new int[_filteredAllEntitiesCount * 2];
+                    _sourceEntities = new int[_graph.World.Capacity * 2];
                 }
+                //Подготовка массивов
             }
 
 
@@ -103,9 +103,9 @@ namespace DCFApixels.DragonECS.Graphs.Internal
             _currentFilteredEntitiesCount = _filteredAllEntitiesCount;
 
             //Подготовка массивов
-            if (_targetWorldCapacity < World.Capacity)
+            if (_targetWorldCapacity < _graph.World.Capacity)
             {
-                _targetWorldCapacity = World.Capacity;
+                _targetWorldCapacity = _graph.World.Capacity;
                 _linkedListSourceHeads = new LinkedListHead[_targetWorldCapacity];
                 //_startEntities = new int[_targetWorldCapacity];
             }
