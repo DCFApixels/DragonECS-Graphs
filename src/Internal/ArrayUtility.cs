@@ -58,12 +58,14 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T* New<T>(int capacity) where T : unmanaged
         {
-            return (T*)Marshal.AllocHGlobal(Marshal.SizeOf<T>() * capacity).ToPointer();
+            //return (T*)Marshal.AllocHGlobal(Marshal.SizeOf<T>() * capacity).ToPointer();
+            return (T*)Marshal.AllocHGlobal(MetaCache<T>.Size * capacity).ToPointer();
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void New<T>(out T* ptr, int capacity) where T : unmanaged
         {
-            ptr = (T*)Marshal.AllocHGlobal(Marshal.SizeOf<T>() * capacity).ToPointer();
+            //ptr = (T*)Marshal.AllocHGlobal(Marshal.SizeOf<T>() * capacity).ToPointer();
+            ptr = (T*)Marshal.AllocHGlobal(MetaCache<T>.Size * capacity).ToPointer();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -120,9 +122,10 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T* Resize<T>(void* oldPointer, int newCount) where T : unmanaged
         {
+            Console.WriteLine("Resize ptr: " + ((IntPtr)oldPointer));
             return (T*)Marshal.ReAllocHGlobal(
                 new IntPtr(oldPointer),
-                new IntPtr(MetaCache<T>.Size * newCount)).ToPointer();
+                new IntPtr(Marshal.SizeOf<T>() * newCount)).ToPointer();
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T* ResizeAndInit<T>(void* oldPointer, int oldSize, int newSize) where T : unmanaged

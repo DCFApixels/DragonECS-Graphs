@@ -41,17 +41,17 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         internal T* ptr;
         internal int Length;
 
-        public ref T this[int index]
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get
-            {
-#if DEBUG
-                if (index < 0 || index >= Length) { Throw.ArgumentOutOfRange(); }
-#endif
-                return ref ptr[index];
-            }
-        }
+//        public ref T this[int index]
+//        {
+//            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+//            get
+//            {
+//#if DEBUG
+//                if (index < 0 || index >= Length) { Throw.ArgumentOutOfRange(); }
+//#endif
+//                return ref ptr[index];
+//            }
+//        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public UnsafeArray(int length)
@@ -140,7 +140,7 @@ namespace DCFApixels.DragonECS.Graphs.Internal
                 elements = new T[length];
                 for (int i = 0; i < length; i++)
                 {
-                    elements[i] = instance[i];
+                    elements[i] = instance.ptr[i];
                 }
             }
         }
