@@ -1,20 +1,19 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Threading;
 using TValue = System.Int32;
 
 namespace DCFApixels.DragonECS.Graphs.Internal
 {
-    internal sealed unsafe class SparseMatrix
+    public sealed unsafe class SparseMatrix
     {
         public const int MIN_CAPACITY_BITS_OFFSET = 4;
         public const int MIN_CAPACITY = 1 << MIN_CAPACITY_BITS_OFFSET;
 
         private const int CHAIN_LENGTH_THRESHOLD = 5;
-        private const float CHAIN_LENGTH_THRESHOLD_CAPCITY_THRESHOLD = 0.7f;
+        private const float CHAIN_LENGTH_THRESHOLD_CAPCITY_THRESHOLD = 0.65f;
 
-        private Basket* _buckets;
+        private int* _buckets;
         private Entry* _entries;
         private int _capacity;
         private int _count_Threshold;
@@ -44,13 +43,11 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         public SparseMatrix(int minCapacity = MIN_CAPACITY)
         {
             minCapacity = NormalizeCapacity(minCapacity);
-            //_buckets = new UnsafeArray<Basket>(minCapacity);
-            //_entries = new UnsafeArray<Entry>(minCapacity, true);
-            _buckets = UnmanagedArrayUtility.New<Basket>(minCapacity);
+            _buckets = UnmanagedArrayUtility.New<int>(minCapacity);
             _entries = UnmanagedArrayUtility.NewAndInit<Entry>(minCapacity);
             for (int i = 0; i < minCapacity; i++)
             {
-                _buckets[i] = Basket.Empty;
+                _buckets[i] = -1;
             }
             _modBitMask = (minCapacity - 1) & 0x7FFFFFFF;
 
@@ -75,56 +72,64 @@ namespace DCFApixels.DragonECS.Graphs.Internal
             {
                 long key = KeyUtility.FromXY(x, y);
 #if DEBUG
-            if (FindEntry(key) >= 0)
-            {
-                Throw.ArgumentException("Has(x, y) is true");
-            }
+                if (FindEntry(key) >= 0)
+                {
+                    Throw.ArgumentException("Has(x, y) is true");
+                }
 #endif
-                int targetBucket = (int)key & _modBitMask;
-                AddInternal(key, targetBucket, value);
+                int hash = IntHashes.hashes[y] ^ x;
+                AddInternal(key, hash, value);
             }
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryAdd(int x, int y, TValue value)
         {
-            long key = KeyUtility.FromXY(x, y);
-            if (FindEntry(key) >= 0)
+            unchecked
             {
-                return false;
+                long key = KeyUtility.FromXY(x, y);
+                int hash = IntHashes.hashes[y] ^ x;
+                if (FindEntry(x, y) >= 0)
+                {
+                    return false;
+                }
+                AddInternal(key, hash, value);
+                return true;
             }
-            int targetBucket = (int)key & _modBitMask;
-            AddInternal(key, targetBucket, value);
-            return true;
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Set(int x, int y, TValue value)
         {
-            long key = KeyUtility.FromXY(x, y);
-            int targetBucket = (int)key & _modBitMask;
-
-            for (int i = _buckets[targetBucket].index; i >= 0; i = _entries[i].next)
+            unchecked
             {
-                if (_entries[i].key == key)
+                long key = KeyUtility.FromXY(x, y);
+                int hash = IntHashes.hashes[y] ^ x;
+                int targetBucket = hash & _modBitMask;
+
+                for (int i = _buckets[targetBucket]; i >= 0; i = _entries[i].next)
                 {
-                    _entries[i].value = value;
-                    return;
+                    if (_entries[i].hash == hash && _entries[i].key == key)
+                    {
+                        _entries[i].value = value;
+                        return;
+                    }
                 }
+                AddInternal(key, hash, value);
             }
-            AddInternal(key, targetBucket, value);
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void AddInternal(long key, int targetBucket, int value)
+        private void AddInternal(long key, int hash, int value)
         {
             unchecked
             {
+                int targetBucket = hash & _modBitMask;
                 int index;
                 if (_freeCount == 0)
                 {
-                    if (_count >= _capacity)
-                    {
+                    if (_count > _count_Threshold)
+                    { 
                         Resize();
                         // обновляем под новое значение _modBitMask
-                        targetBucket = (int)key & _modBitMask;
+                        targetBucket = hash & _modBitMask;
                     }
                     //index = Interlocked.Increment(ref _count);
                     index = _count++;
@@ -140,22 +145,14 @@ namespace DCFApixels.DragonECS.Graphs.Internal
                 if (_freeCount < 0) { Throw.UndefinedException(); }
 #endif
 
-                ref Basket basket = ref _buckets[targetBucket];
+                ref int basket = ref _buckets[targetBucket];
                 ref Entry entry = ref _entries[index];
 
-                entry.next = basket.index;
+                entry.hash = hash;
+                entry.next = basket;
                 entry.key = key;
                 entry.value = value;
-                Interlocked.Increment(ref basket.count);
-                //basket.count++;
-                basket.index = index;
-
-                if (basket.count >= CHAIN_LENGTH_THRESHOLD &&
-                    _count > _count_Threshold)
-                //_count / _capacity >= CHAIN_LENGTH_THRESHOLD_CAPCITY_THRESHOLD)
-                {
-                    Resize();
-                }
+                basket = index;
             }
         }
         #endregion
@@ -165,21 +162,10 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         private int FindEntry(int x, int y)
         {
             long key = KeyUtility.FromXY(x, y);
-            for (int i = _buckets[key & _modBitMask].index; i >= 0; i = _entries[i].next)
+            int hash = IntHashes.hashes[y] ^ x;
+            for (int i = _buckets[hash & _modBitMask]; i >= 0; i = _entries[i].next)
             {
-                if (_entries[i].key == key)
-                {
-                    return i;
-                }
-            }
-            return -1;
-        }
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private int FindEntry(long key)
-        {
-            for (int i = _buckets[key & _modBitMask].index; i >= 0; i = _entries[i].next)
-            {
-                if (_entries[i].key == key)
+                if (_entries[i].hash == hash && _entries[i].key == key)
                 {
                     return i;
                 }
@@ -222,17 +208,18 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         public bool TryDel(int x, int y)
         {
             long key = KeyUtility.FromXY(x, y);
-            int targetBucket = (int)key & _modBitMask;
-            ref Basket basket = ref _buckets[targetBucket];
+            int hash = IntHashes.hashes[y] ^ x;
+            int targetBucket = hash & _modBitMask;
+            ref int basket = ref _buckets[targetBucket];
 
             int last = -1;
-            for (int i = basket.index; i >= 0; last = i, i = _entries[i].next)
+            for (int i = basket; i >= 0; last = i, i = _entries[i].next)
             {
-                if (_entries[i].key == key)
+                if (_entries[i].hash == hash && _entries[i].key == key)
                 {
                     if (last < 0)
                     {
-                        basket.index = _entries[i].next;
+                        basket = _entries[i].next;
                     }
                     else
                     {
@@ -243,7 +230,6 @@ namespace DCFApixels.DragonECS.Graphs.Internal
                     _entries[i].value = default;
                     _freeList = i;
                     _freeCount++;
-                    basket.count--;
                     return true;
                 }
             }
@@ -258,7 +244,7 @@ namespace DCFApixels.DragonECS.Graphs.Internal
             {
                 for (int i = 0; i < _capacity; i++)
                 {
-                    _buckets[i] = Basket.Empty;
+                    _buckets[i] = -1;
                 }
                 for (int i = 0; i < _capacity; i++)
                 {
@@ -278,10 +264,10 @@ namespace DCFApixels.DragonECS.Graphs.Internal
             _modBitMask = (newSize - 1) & 0x7FFFFFFF;
 
             //newBuckets create and ini
-            Basket* newBuckets = UnmanagedArrayUtility.New<Basket>(newSize);
+            int* newBuckets = UnmanagedArrayUtility.New<int>(newSize);
             for (int i = 0; i < newSize; i++)
             {
-                newBuckets[i] = Basket.Empty;
+                newBuckets[i] = -1;
             }
             //END newBuckets create and ini
 
@@ -291,10 +277,9 @@ namespace DCFApixels.DragonECS.Graphs.Internal
                 if (newEntries[i].key >= 0)
                 {
                     ref Entry entry = ref newEntries[i];
-                    ref Basket basket = ref newBuckets[entry.key & _modBitMask];
-                    entry.next = basket.index;
-                    basket.index = i;
-                    basket.count++;
+                    ref int basket = ref newBuckets[entry.hash & _modBitMask];
+                    entry.next = basket;
+                    basket = i;
                 }
             }
 
@@ -326,23 +311,9 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         {
             public int next;        // Index of next entry, -1 if last
             public long key;
+            public int hash;
             public TValue value;
             public override string ToString() { return key == 0 ? "NULL" : $"{key} {value}"; }
-        }
-
-        [StructLayout(LayoutKind.Sequential, Pack = 4, Size = 8)]
-        public struct Basket
-        {
-            public static readonly Basket Empty = new Basket(-1, 0);
-            public int index;
-            public int count;
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public Basket(int index, int count)
-            {
-                this.index = index;
-                this.count = count;
-            }
-            public override string ToString() { return index < 0 ? "NULL" : $"{index} {count}"; }
         }
 
         public static class KeyUtility
@@ -352,11 +323,7 @@ namespace DCFApixels.DragonECS.Graphs.Internal
             {
                 unchecked
                 {
-                    //long result = ((long)x << 32) | (long)(x ^ y ^ Mixing(y));
-                    //Console.WriteLine($"key {x}-{y}-{result}");
-                    //return result;
-                    //return ((long)x << 32) | (long)(x ^ y ^ Mixing(y));
-                    return ((long)x << 32) | ((long)(x << 2) ^ y);
+                    return ((long)x << 32) | (long)y;
                 }
             }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -364,65 +331,122 @@ namespace DCFApixels.DragonECS.Graphs.Internal
             {
                 unchecked
                 {
+                    int i = v;
                     v *= 3571;
-                    //v ^= v << 13;
-                    //v ^= v >> 17;
-                    v ^= v >> 8;
+                    
+                    v ^= v << 13;
+                    v ^= v >> 17;
+                    v ^= v << 5;
+                    //v = (v >> 28) + v ^ i;
                     return v;
                 }
             }
         }
-
-        //[StructLayout(LayoutKind.Explicit, Pack = 4, Size = 8)]
-        //public readonly struct Key : IEquatable<Key>
-        //{
-        //    public static readonly Key Null = new Key(-1, 0);
-        //
-        //    [FieldOffset(0)]
-        //    public readonly long Full;
-        //    [FieldOffset(0)]
-        //    public readonly int X;
-        //    [FieldOffset(4)]
-        //    public readonly int YHash;
-        //
-        //    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //    private Key(int x, int yHash) : this()
-        //    {
-        //        this.X = x;
-        //        this.YHash = yHash;
-        //    }
-        //    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //    public static unsafe Key FromXY(int x, int y)
-        //    {
-        //        unchecked
-        //        {
-        //            return new Key(x, x ^ y ^ Mixing(y));
-        //        }
-        //    }
-        //    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //    private static int Mixing(int x)
-        //    {
-        //        unchecked
-        //        {
-        //            x *= 3571;
-        //            x ^= x << 13;
-        //            x ^= x >> 17;
-        //            return x;
-        //        }
-        //    }
-        //    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //    internal static bool EqualsInFind(Key a, Key b) { return a.X == b.X; }
-        //    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //    public static bool operator ==(Key a, Key b) { return a.X == b.X && a.YHash == b.YHash; }
-        //    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //    public static bool operator !=(Key a, Key b) { return a.X != b.X || a.YHash != b.YHash; }
-        //    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //    public override int GetHashCode() { return YHash; }
-        //    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //    public bool Equals(Key other) { return this == other; }
-        //    public override bool Equals(object obj) { return obj is Key && Equals((Key)obj); }
-        //    public override string ToString() { return $"({X}, {YHash})"; }
-        //}
         #endregion
+    }
+
+
+    public static unsafe class IntHashes
+    {
+        public static int* hashes = null;
+        public static int length = 0;
+        public static void InitFor(int count)
+        {
+            unchecked
+            {
+                //count = GetHighBitNumber((uint)count) << 1;
+
+                if (count <= length) { return; }
+
+                if (hashes != null)
+                {
+                    UnmanagedArrayUtility.Free(hashes);
+                }
+
+                hashes = UnmanagedArrayUtility.New<int>(count);
+
+                uint state = 3571U;
+
+                for (int i = 0; i < count; i++)
+                {
+                    state ^= state << 13;
+                    state ^= state >> 17;
+                    state ^= state << 5;
+
+                    //int v = Mixing(i);
+                    hashes[i] = (int)state;
+                }
+
+                count = length;
+            }
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static int Mixing(int v)
+        {
+            unchecked
+            {
+                int i = v;
+                v *= 3571;
+                //if(i % 3 == 0)
+                //{
+                //    v ^= (v << 13) | 8191;
+                //}
+                //else
+                //{
+                //    v ^= (v << 13);
+                //}
+                v ^= (v << 13);
+                v ^= v >> 17;
+                //if (i % 5 == 0)
+                //{
+                //    v ^= (v << 5) | 15;
+                //}
+                //else
+                //{
+                //    v ^= (v << 5);
+                //}
+                v ^= (v << 5);
+            
+                //v = (v >> 28) + v ^ i;
+                return v;
+
+
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int GetHighBitNumber(uint bits)
+        {
+            if (bits == 0)
+            {
+                return -1;
+            }
+            int bit = 0;
+            if ((bits & 0xFFFF0000) != 0)
+            {
+                bits >>= 16;
+                bit |= 16;
+            }
+            if ((bits & 0xFF00) != 0)
+            {
+                bits >>= 8;
+                bit |= 8;
+            }
+            if ((bits & 0xF0) != 0)
+            {
+                bits >>= 4;
+                bit |= 4;
+            }
+            if ((bits & 0xC) != 0)
+            {
+                bits >>= 2;
+                bit |= 2;
+            }
+            if ((bits & 0x2) != 0)
+            {
+                bit |= 1;
+            }
+            return bit;
+        }
     }
 }

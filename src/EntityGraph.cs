@@ -294,7 +294,10 @@ namespace DCFApixels.DragonECS
                 graphWorld.ReleaseDelEntityBufferAll();
             }
             public void OnWorldDestroy() { }
-            public void OnWorldResize(int startWorldNewSize) { }
+            public void OnWorldResize(int startWorldNewSize)
+            {
+                IntHashes.InitFor(startWorldNewSize);
+            }
             #endregion
         }
         #endregion
