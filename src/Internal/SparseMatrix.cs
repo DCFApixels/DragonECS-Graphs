@@ -4,12 +4,12 @@ using TValue = System.Int32;
 
 namespace DCFApixels.DragonECS.Graphs.Internal
 {
-    public sealed unsafe class SparseMatrix
+    internal sealed unsafe class SparseMatrix
     {
         private const int _NULL_NEXT = -1;
 
-        public const int MIN_CAPACITY_BITS_OFFSET = 4;
-        public const int MIN_CAPACITY = 1 << MIN_CAPACITY_BITS_OFFSET;
+        private const int MIN_CAPACITY_BITS_OFFSET = 4;
+        private const int MIN_CAPACITY = 1 << MIN_CAPACITY_BITS_OFFSET;
 
         private const int CHAIN_LENGTH_THRESHOLD = 5;
         private const float CHAIN_LENGTH_THRESHOLD_CAPCITY_THRESHOLD = 0.65f;
@@ -78,42 +78,7 @@ namespace DCFApixels.DragonECS.Graphs.Internal
                     Throw.ArgumentException("Has(x, y) is true");
                 }
 #endif
-                int hash = IntHashes.hashes[y] ^ x;
-                AddInternal(key, hash, value);
-            }
-        }
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool TryAdd(int x, int y, TValue value)
-        {
-            unchecked
-            {
-                long key = KeyUtility.FromXY(x, y);
-                int hash = IntHashes.hashes[y] ^ x;
-                if (FindEntry(x, y) >= 0)
-                {
-                    return false;
-                }
-                AddInternal(key, hash, value);
-                return true;
-            }
-        }
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Set(int x, int y, TValue value)
-        {
-            unchecked
-            {
-                long key = KeyUtility.FromXY(x, y);
-                int hash = IntHashes.hashes[y] ^ x;
-                int targetBucket = hash & _modBitMask;
-
-                for (int i = _buckets[targetBucket]; i != _NULL_NEXT; i = _entries[i].next)
-                {
-                    if (_entries[i].hash == hash && _entries[i].key == key)
-                    {
-                        _entries[i].value = value;
-                        return;
-                    }
-                }
+                int hash = IntHash.hashes[y] ^ x;
                 AddInternal(key, hash, value);
             }
         }
@@ -163,7 +128,7 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         private int FindEntry(int x, int y)
         {
             long key = KeyUtility.FromXY(x, y);
-            int hash = IntHashes.hashes[y] ^ x;
+            int hash = IntHash.hashes[y] ^ x;
             for (int i = _buckets[hash & _modBitMask]; i != _NULL_NEXT; i = _entries[i].next)
             {
                 if (_entries[i].hash == hash && _entries[i].key == key)
@@ -209,7 +174,7 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         public bool TryDel(int x, int y)
         {
             long key = KeyUtility.FromXY(x, y);
-            int hash = IntHashes.hashes[y] ^ x;
+            int hash = IntHash.hashes[y] ^ x;
             int targetBucket = hash & _modBitMask;
             ref int bucket = ref _buckets[targetBucket];
 
@@ -291,6 +256,7 @@ namespace DCFApixels.DragonECS.Graphs.Internal
             SetCapacity(newSize);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void SetCapacity(int newSize)
         {
             _capacity = newSize;
@@ -300,9 +266,8 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static int NormalizeCapacity(int capacity)
         {
-            int result = MIN_CAPACITY;
-            while (result < capacity) { result <<= 1; }
-            return result;
+            int result = ArrayUtility.NormalizeSizeToPowerOfTwo(capacity);
+            return result < MIN_CAPACITY ? MIN_CAPACITY : result;
         }
         #endregion
 
@@ -329,39 +294,5 @@ namespace DCFApixels.DragonECS.Graphs.Internal
             }
         }
         #endregion
-    }
-
-
-    public static unsafe class IntHashes
-    {
-        public static int* hashes = null;
-        public static int length = 0;
-        public static void InitFor(int count)
-        {
-            if (count <= length) { return; }
-
-            unchecked
-            {
-                //quasi random consts
-                const decimal G1 = 1.6180339887498948482045868383m;
-                const uint Q32_MAX = uint.MaxValue;
-                const uint X1_Q32 = (uint)(1m / G1 * Q32_MAX) + 1;
-
-                if (hashes != null)
-                {
-                    UnmanagedArrayUtility.Free(hashes);
-                }
-                hashes = UnmanagedArrayUtility.New<int>(count);
-
-                uint state = 3571U;
-                for (int i = 0; i < count; i++)
-                {
-                    state = X1_Q32 * state;
-                    hashes[i] = ((int)state) & 0x7FFFFFFF;
-                }
-
-                count = length;
-            }
-        }
     }
 }

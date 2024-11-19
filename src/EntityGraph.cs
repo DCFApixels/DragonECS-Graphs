@@ -296,7 +296,7 @@ namespace DCFApixels.DragonECS
             public void OnWorldDestroy() { }
             public void OnWorldResize(int startWorldNewSize)
             {
-                IntHashes.InitFor(startWorldNewSize);
+                IntHash.InitFor(startWorldNewSize);
             }
             #endregion
         }

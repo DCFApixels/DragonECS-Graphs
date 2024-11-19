@@ -58,13 +58,11 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T* New<T>(int capacity) where T : unmanaged
         {
-            //return (T*)Marshal.AllocHGlobal(Marshal.SizeOf<T>() * capacity).ToPointer();
             return (T*)Marshal.AllocHGlobal(MetaCache<T>.Size * capacity).ToPointer();
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void New<T>(out T* ptr, int capacity) where T : unmanaged
         {
-            //ptr = (T*)Marshal.AllocHGlobal(Marshal.SizeOf<T>() * capacity).ToPointer();
             ptr = (T*)Marshal.AllocHGlobal(MetaCache<T>.Size * capacity).ToPointer();
         }
 
