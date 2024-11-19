@@ -1,6 +1,4 @@
-﻿using System;
-using System.Data.SqlTypes;
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using TValue = System.Int32;
 
@@ -8,6 +6,8 @@ namespace DCFApixels.DragonECS.Graphs.Internal
 {
     public sealed unsafe class SparseMatrix
     {
+        private const int _NULL_NEXT = -1;
+
         public const int MIN_CAPACITY_BITS_OFFSET = 4;
         public const int MIN_CAPACITY = 1 << MIN_CAPACITY_BITS_OFFSET;
 
@@ -48,7 +48,7 @@ namespace DCFApixels.DragonECS.Graphs.Internal
             _entries = UnmanagedArrayUtility.NewAndInit<Entry>(minCapacity);
             for (int i = 0; i < minCapacity; i++)
             {
-                _buckets[i] = -1;
+                _buckets[i] = _NULL_NEXT;
             }
             _modBitMask = (minCapacity - 1) & 0x7FFFFFFF;
 
@@ -106,7 +106,7 @@ namespace DCFApixels.DragonECS.Graphs.Internal
                 int hash = IntHashes.hashes[y] ^ x;
                 int targetBucket = hash & _modBitMask;
 
-                for (int i = _buckets[targetBucket]; i >= 0; i = _entries[i].next)
+                for (int i = _buckets[targetBucket]; i != _NULL_NEXT; i = _entries[i].next)
                 {
                     if (_entries[i].hash == hash && _entries[i].key == key)
                     {
@@ -127,7 +127,7 @@ namespace DCFApixels.DragonECS.Graphs.Internal
                 if (_freeCount == 0)
                 {
                     if (_count > _count_Threshold)
-                    { 
+                    {
                         Resize();
                         // обновляем под новое значение _modBitMask
                         targetBucket = hash & _modBitMask;
@@ -146,14 +146,14 @@ namespace DCFApixels.DragonECS.Graphs.Internal
                 if (_freeCount < 0) { Throw.UndefinedException(); }
 #endif
 
-                ref int basket = ref _buckets[targetBucket];
+                ref int bucket = ref _buckets[targetBucket];
                 ref Entry entry = ref _entries[index];
 
                 entry.hash = hash;
-                entry.next = basket;
+                entry.next = bucket;
                 entry.key = key;
                 entry.value = value;
-                basket = index;
+                bucket = index;
             }
         }
         #endregion
@@ -164,7 +164,7 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         {
             long key = KeyUtility.FromXY(x, y);
             int hash = IntHashes.hashes[y] ^ x;
-            for (int i = _buckets[hash & _modBitMask]; i >= 0; i = _entries[i].next)
+            for (int i = _buckets[hash & _modBitMask]; i != _NULL_NEXT; i = _entries[i].next)
             {
                 if (_entries[i].hash == hash && _entries[i].key == key)
                 {
@@ -211,24 +211,25 @@ namespace DCFApixels.DragonECS.Graphs.Internal
             long key = KeyUtility.FromXY(x, y);
             int hash = IntHashes.hashes[y] ^ x;
             int targetBucket = hash & _modBitMask;
-            ref int basket = ref _buckets[targetBucket];
+            ref int bucket = ref _buckets[targetBucket];
 
             int last = -1;
-            for (int i = basket; i >= 0; last = i, i = _entries[i].next)
+            for (int i = bucket; i >= 0; last = i, i = _entries[i].next)
             {
                 if (_entries[i].hash == hash && _entries[i].key == key)
                 {
                     if (last < 0)
                     {
-                        basket = _entries[i].next;
+                        bucket = _entries[i].next;
                     }
                     else
                     {
                         _entries[last].next = _entries[i].next;
                     }
+                    _entries[i].hash = -1;
                     _entries[i].next = _freeList;
-                    _entries[i].key = default; //Key.Null;
-                    _entries[i].value = default;
+                    //_entries[i].key = default;
+                    //_entries[i].value = default;
                     _freeList = i;
                     _freeCount++;
                     return true;
@@ -245,7 +246,7 @@ namespace DCFApixels.DragonECS.Graphs.Internal
             {
                 for (int i = 0; i < _capacity; i++)
                 {
-                    _buckets[i] = -1;
+                    _buckets[i] = _NULL_NEXT;
                 }
                 for (int i = 0; i < _capacity; i++)
                 {
@@ -261,14 +262,13 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         private void Resize()
         {
             int newSize = _capacity << 1;
-            Console.WriteLine($"Resize {newSize}");
             _modBitMask = (newSize - 1) & 0x7FFFFFFF;
 
             //newBuckets create and ini
             int* newBuckets = UnmanagedArrayUtility.New<int>(newSize);
             for (int i = 0; i < newSize; i++)
             {
-                newBuckets[i] = -1;
+                newBuckets[i] = _NULL_NEXT;
             }
             //END newBuckets create and ini
 
@@ -278,16 +278,16 @@ namespace DCFApixels.DragonECS.Graphs.Internal
                 if (newEntries[i].key >= 0)
                 {
                     ref Entry entry = ref newEntries[i];
-                    ref int basket = ref newBuckets[entry.hash & _modBitMask];
-                    entry.next = basket;
-                    basket = i;
+                    ref int bucket = ref newBuckets[entry.hash & _modBitMask];
+                    entry.next = bucket;
+                    bucket = i;
                 }
             }
 
             UnmanagedArrayUtility.Free(_buckets);
             _buckets = newBuckets;
             _entries = newEntries;
-            
+
             SetCapacity(newSize);
         }
 
@@ -310,8 +310,8 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         [StructLayout(LayoutKind.Sequential, Pack = 4)]
         private struct Entry
         {
-            public int next;        // Index of next entry, -1 if last
             public long key;
+            public int next;        // Index of next entry, -1 if last
             public int hash;
             public TValue value;
             public override string ToString() { return key == 0 ? "NULL" : $"{key} {value}"; }
@@ -327,21 +327,6 @@ namespace DCFApixels.DragonECS.Graphs.Internal
                     return ((long)x << 32) | (long)y;
                 }
             }
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            private static int Mixing(int v)
-            {
-                unchecked
-                {
-                    int i = v;
-                    v *= 3571;
-                    
-                    v ^= v << 13;
-                    v ^= v >> 17;
-                    v ^= v << 5;
-                    //v = (v >> 28) + v ^ i;
-                    return v;
-                }
-            }
         }
         #endregion
     }
@@ -353,107 +338,30 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         public static int length = 0;
         public static void InitFor(int count)
         {
+            if (count <= length) { return; }
+
             unchecked
             {
+                //quasi random consts
                 const decimal G1 = 1.6180339887498948482045868383m;
                 const uint Q32_MAX = uint.MaxValue;
                 const uint X1_Q32 = (uint)(1m / G1 * Q32_MAX) + 1;
-
-                //count = GetHighBitNumber((uint)count) << 1;
-
-                if (count <= length) { return; }
 
                 if (hashes != null)
                 {
                     UnmanagedArrayUtility.Free(hashes);
                 }
-
                 hashes = UnmanagedArrayUtility.New<int>(count);
 
                 uint state = 3571U;
-
                 for (int i = 0; i < count; i++)
                 {
-                    //state ^= state << 13;
-                    //state ^= state >> 17;
-                    //state ^= state << 5;
-
                     state = X1_Q32 * state;
-
-                    //int v = Mixing(i);
-                    hashes[i] = (int)state;
+                    hashes[i] = ((int)state) & 0x7FFFFFFF;
                 }
 
                 count = length;
             }
-        }
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static int Mixing(int v)
-        {
-            unchecked
-            {
-                int i = v;
-                v *= 3571;
-                //if(i % 3 == 0)
-                //{
-                //    v ^= (v << 13) | 8191;
-                //}
-                //else
-                //{
-                //    v ^= (v << 13);
-                //}
-                v ^= (v << 13);
-                v ^= v >> 17;
-                //if (i % 5 == 0)
-                //{
-                //    v ^= (v << 5) | 15;
-                //}
-                //else
-                //{
-                //    v ^= (v << 5);
-                //}
-                v ^= (v << 5);
-            
-                //v = (v >> 28) + v ^ i;
-                return v;
-
-
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int GetHighBitNumber(uint bits)
-        {
-            if (bits == 0)
-            {
-                return -1;
-            }
-            int bit = 0;
-            if ((bits & 0xFFFF0000) != 0)
-            {
-                bits >>= 16;
-                bit |= 16;
-            }
-            if ((bits & 0xFF00) != 0)
-            {
-                bits >>= 8;
-                bit |= 8;
-            }
-            if ((bits & 0xF0) != 0)
-            {
-                bits >>= 4;
-                bit |= 4;
-            }
-            if ((bits & 0xC) != 0)
-            {
-                bits >>= 2;
-                bit |= 2;
-            }
-            if ((bits & 0x2) != 0)
-            {
-                bit |= 1;
-            }
-            return bit;
         }
     }
 }

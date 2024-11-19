@@ -4,8 +4,8 @@ using System.Runtime.InteropServices;
 
 namespace DCFApixels.DragonECS.Graphs.Internal
 {
-    [StructLayout(LayoutKind.Sequential, Pack = 4, Size = 8)]
     [Serializable]
+    [StructLayout(LayoutKind.Sequential, Pack = 4, Size = 8)]
     internal readonly struct RelationInfo : IEquatable<RelationInfo>
     {
         public static readonly RelationInfo Empty = new RelationInfo();

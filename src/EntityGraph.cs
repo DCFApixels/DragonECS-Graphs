@@ -147,20 +147,20 @@ namespace DCFApixels.DragonECS
         #endregion
 
         #region MoveRelation
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void MoveRelation(int relEntityID, int newStartEntityID, int newEndEntityID)
-        {
-            var startEnd = GetRelationStartEnd(relEntityID);
-
-            //Тут будет не стабильное состояние если TryDel пройдет, а TryAdd - нет
-            if (_matrix.TryDel(startEnd.start, startEnd.end) == false ||
-                _matrix.TryAdd(newStartEntityID, newEndEntityID, relEntityID) == false)
-            {
-                Throw.UndefinedException();
-            }
-
-            _relEntityInfos[relEntityID] = new RelationInfo(newStartEntityID, newEndEntityID);
-        }
+        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
+        //private void MoveRelation(int relEntityID, int newStartEntityID, int newEndEntityID)
+        //{
+        //    var startEnd = GetRelationStartEnd(relEntityID);
+        //
+        //    //Тут будет не стабильное состояние если TryDel пройдет, а TryAdd - нет
+        //    if (_matrix.TryDel(startEnd.start, startEnd.end) == false ||
+        //        _matrix.TryAdd(newStartEntityID, newEndEntityID, relEntityID) == false)
+        //    {
+        //        Throw.UndefinedException();
+        //    }
+        //
+        //    _relEntityInfos[relEntityID] = new RelationInfo(newStartEntityID, newEndEntityID);
+        //}
         #endregion
 
         #region Get
