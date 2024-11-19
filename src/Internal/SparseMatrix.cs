@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Data.SqlTypes;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using TValue = System.Int32;
@@ -354,6 +355,10 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         {
             unchecked
             {
+                const decimal G1 = 1.6180339887498948482045868383m;
+                const uint Q32_MAX = uint.MaxValue;
+                const uint X1_Q32 = (uint)(1m / G1 * Q32_MAX) + 1;
+
                 //count = GetHighBitNumber((uint)count) << 1;
 
                 if (count <= length) { return; }
@@ -369,9 +374,11 @@ namespace DCFApixels.DragonECS.Graphs.Internal
 
                 for (int i = 0; i < count; i++)
                 {
-                    state ^= state << 13;
-                    state ^= state >> 17;
-                    state ^= state << 5;
+                    //state ^= state << 13;
+                    //state ^= state >> 17;
+                    //state ^= state << 5;
+
+                    state = X1_Q32 * state;
 
                     //int v = Mixing(i);
                     hashes[i] = (int)state;
