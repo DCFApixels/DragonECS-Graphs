@@ -71,15 +71,14 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         {
             unchecked
             {
-                long key = KeyUtility.FromXY(x, y);
 #if DEBUG
-                if (FindEntry(key) >= 0)
+                if (FindEntry(x, y) >= 0)
                 {
                     Throw.ArgumentException("Has(x, y) is true");
                 }
 #endif
                 int hash = IntHash.hashes[y] ^ x;
-                AddInternal(key, hash, value);
+                AddInternal(KeyUtility.FromXY(x, y), hash, value);
             }
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
