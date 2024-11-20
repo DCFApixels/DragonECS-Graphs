@@ -96,7 +96,6 @@ namespace DCFApixels.DragonECS.Graphs.Internal
                         // обновляем под новое значение _modBitMask
                         targetBucket = hash & _modBitMask;
                     }
-                    //index = Interlocked.Increment(ref _count);
                     index = _count++;
                 }
                 else
@@ -281,7 +280,7 @@ namespace DCFApixels.DragonECS.Graphs.Internal
             public override string ToString() { return key == 0 ? "NULL" : $"{key} {value}"; }
         }
 
-        public static class KeyUtility
+        private static class KeyUtility
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static long FromXY(int x, int y)

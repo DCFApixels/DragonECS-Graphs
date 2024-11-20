@@ -7,6 +7,10 @@ namespace DCFApixels.DragonECS
     {
         private static EntityGraph[] _worldGraphs = new EntityGraph[4];
 
+        public static EntityGraph CreateGraph(this EcsWorld self)
+        {
+            return self.CreateGraph(self);
+        }
         public static EntityGraph CreateGraph(this EcsWorld self, EcsWorld graphWorld)
         {
             int worldID = self.ID;
@@ -25,6 +29,10 @@ namespace DCFApixels.DragonECS
             return graph;
         }
 
+        public static EntityGraph CreateOrGetGraph(this EcsWorld self)
+        {
+            return self.CreateGraph(self);
+        }
         public static EntityGraph CreateOrGetGraph(this EcsWorld self, EcsWorld graphWorld)
         {
             int worldID = self.ID;
@@ -73,14 +81,15 @@ namespace DCFApixels.DragonECS
             return false;
         }
 
-        private static void TryDestroy(EntityGraph graph)
+        #region Internal Destroy
+        private static void TryDestroyGraph(EntityGraph graph)
         {
-            int worldID = graph.WorldID;
+            short worldID = graph.WorldID;
             if (_worldGraphs.Length <= worldID)
             {
                 Array.Resize(ref _worldGraphs, worldID + 4);
             }
-            int graphWorldID = graph.GraphWorldID;
+            short graphWorldID = graph.GraphWorldID;
             if (_worldGraphs.Length <= graphWorldID)
             {
                 Array.Resize(ref _worldGraphs, graphWorldID + 4);
@@ -100,9 +109,10 @@ namespace DCFApixels.DragonECS
             public void OnReleaseDelEntityBuffer(ReadOnlySpan<int> buffer) { }
             public void OnWorldDestroy()
             {
-                TryDestroy(_graph);
+                TryDestroyGraph(_graph);
             }
             public void OnWorldResize(int newSize) { }
         }
+        #endregion
     }
 }

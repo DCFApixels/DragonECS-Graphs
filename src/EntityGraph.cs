@@ -22,6 +22,7 @@ namespace DCFApixels.DragonECS
         private int _count;
 
         private bool _isInit = false;
+        private bool _isDestroyed = false;
 
         #region Properties
         internal bool IsInit_Internal
@@ -77,12 +78,7 @@ namespace DCFApixels.DragonECS
         }
         #endregion
 
-        #region New/Convert
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int NewRelation(int startEntityID, int endEntityID)
-        {
-            return NewRelationInternal(startEntityID, endEntityID);
-        }
+        #region New
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int GetOrNewRelation(int startEntityID, int endEntityID)
         {
@@ -93,39 +89,23 @@ namespace DCFApixels.DragonECS
             return NewRelationInternal(startEntityID, endEntityID);
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int GetOrNewInverseRelation(int relEntityID)
+        {
+#if (DEBUG && !DISABLE_DEBUG) || !DISABLE_DRAGONECS_ASSERT_CHEKS
+            if (relEntityID <= 0 || relEntityID >= _relEntityInfos.Length) { Throw.UndefinedException(); }
+#endif
+            var info = _relEntityInfos[relEntityID];
+            return GetOrNewRelation(info.end, info.start);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private int NewRelationInternal(int startEntityID, int endEntityID)
         {
             int relEntityID = _graphWorld.NewEntity();
-            ConvertToRelationInternal(relEntityID, startEntityID, endEntityID);
-            return relEntityID;
-        }
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void ConvertToRelation(int entityID, int startEntityID, int endEntityID)
-        {
-            if (IsRelation(entityID))
-            {
-                Throw.UndefinedException();
-            }
-            ConvertToRelationInternal(entityID, startEntityID, endEntityID);
-        }
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void ConvertToRelationInternal(int relEntityID, int startEntityID, int endEntityID)
-        {
             _matrix.Add(startEntityID, endEntityID, relEntityID);
             _relEntityInfos[relEntityID] = new RelationInfo(startEntityID, endEntityID);
             _count++;
-        }
-        #endregion
-
-        #region Inverse
-        public int GetInverseRelation(int relEntityID)
-        {
-            if (relEntityID <= 0 || relEntityID >= _relEntityInfos.Length)
-            {
-                Throw.UndefinedException();
-            }
-            var x = _relEntityInfos[relEntityID];
-            return GetOrNewRelation(x.end, x.start);
+            return relEntityID;
         }
         #endregion
 
@@ -138,41 +118,26 @@ namespace DCFApixels.DragonECS
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsRelation(int relEntityID)
         {
-            if (relEntityID <= 0 || relEntityID >= _relEntityInfos.Length)
-            {
-                return false;
-            }
-            return !_relEntityInfos[relEntityID].IsNull;
+            return relEntityID > 0 &&
+                relEntityID < _relEntityInfos.Length &&
+                _relEntityInfos[relEntityID].IsNull == false;
         }
-        #endregion
-
-        #region MoveRelation
-        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //private void MoveRelation(int relEntityID, int newStartEntityID, int newEndEntityID)
-        //{
-        //    var startEnd = GetRelationStartEnd(relEntityID);
-        //
-        //    //Тут будет не стабильное состояние если TryDel пройдет, а TryAdd - нет
-        //    if (_matrix.TryDel(startEnd.start, startEnd.end) == false ||
-        //        _matrix.TryAdd(newStartEntityID, newEndEntityID, relEntityID) == false)
-        //    {
-        //        Throw.UndefinedException();
-        //    }
-        //
-        //    _relEntityInfos[relEntityID] = new RelationInfo(newStartEntityID, newEndEntityID);
-        //}
         #endregion
 
         #region Get
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int GetRelation(int startEntityID, int endEntityID)
-        {
-            return _matrix.GetValue(startEntityID, endEntityID);
-        }
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryGetRelation(int startEntityID, int endEntityID, out int relEntityID)
         {
             return _matrix.TryGetValue(startEntityID, endEntityID, out relEntityID);
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool TryGetInverseRelation(int relEntityID, out int inverseRelEntityID)
+        {
+#if (DEBUG && !DISABLE_DEBUG) || !DISABLE_DRAGONECS_ASSERT_CHEKS
+            if (relEntityID <= 0 || relEntityID >= _relEntityInfos.Length) { Throw.UndefinedException(); }
+#endif
+            var info = _relEntityInfos[relEntityID];
+            return _matrix.TryGetValue(info.end, info.start, out inverseRelEntityID);
         }
         #endregion
 
@@ -196,42 +161,38 @@ namespace DCFApixels.DragonECS
         }
         #endregion
 
-        #region Other
-        public static implicit operator EntityGraph(SingletonMarker marker) { return marker.Builder.World.GetGraph(); }
-        #endregion
-
-        #region RelEntityInfo
-
+        #region GetRelInfo
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public StartEnd GetRelationStartEnd(int relEntityID)
         {
-            if (relEntityID <= 0 || relEntityID >= _relEntityInfos.Length)
-            {
-                Throw.UndefinedException();
-            }
+#if (DEBUG && !DISABLE_DEBUG) || !DISABLE_DRAGONECS_ASSERT_CHEKS
+            if (relEntityID <= 0 || relEntityID >= _relEntityInfos.Length) { Throw.UndefinedException(); }
+#endif
             return new StartEnd(_relEntityInfos[relEntityID]);
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int GetRelationStart(int relEntityID)
         {
-            if (relEntityID <= 0 || relEntityID >= _relEntityInfos.Length)
-            {
-                Throw.UndefinedException();
-            }
+#if (DEBUG && !DISABLE_DEBUG) || !DISABLE_DRAGONECS_ASSERT_CHEKS
+            if (relEntityID <= 0 || relEntityID >= _relEntityInfos.Length) { Throw.UndefinedException(); }
+#endif
             return _relEntityInfos[relEntityID].start;
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int GetRelationEnd(int relEntityID)
         {
-            if (relEntityID <= 0 || relEntityID >= _relEntityInfos.Length)
-            {
-                Throw.UndefinedException();
-            }
+#if (DEBUG && !DISABLE_DEBUG) || !DISABLE_DRAGONECS_ASSERT_CHEKS
+            if (relEntityID <= 0 || relEntityID >= _relEntityInfos.Length) { Throw.UndefinedException(); }
+#endif
             return _relEntityInfos[relEntityID].end;
         }
         #endregion
 
-        #region GraphWorldHandler
+        #region Other
+        public static implicit operator EntityGraph(SingletonMarker marker) { return marker.Builder.World.GetGraph(); }
+        #endregion
+
+        #region WorldHandlers
         private class GraphWorldHandler : IEcsWorldEventListener
         {
             private readonly EntityGraph _arc;
@@ -259,9 +220,6 @@ namespace DCFApixels.DragonECS
             }
             #endregion
         }
-        #endregion
-
-        #region WorldHandler
         private class WorldHandler : IEcsWorldEventListener
         {
             private readonly EntityGraph _graph;
