@@ -6,7 +6,7 @@ namespace DCFApixels.DragonECS
     public static class GraphQueriesExtensions
     {
         #region JoinToGraph Empty
-        public static EcsSubGraph JoinToSubGraph(this EcsWorld entities, EcsSubGraphMode mode = EcsSubGraphMode.StartToEnd)
+        public static EcsSubGraph JoinGraph(this EcsWorld entities, EcsSubGraphMode mode = EcsSubGraphMode.StartToEnd)
         {
             entities.GetQueryCache(out JoinToSubGraphExecutor executor, out EmptyAspect _);
             return executor.Execute(mode);
@@ -14,7 +14,7 @@ namespace DCFApixels.DragonECS
         #endregion
 
         #region JoinToGraph Mask
-        public static EcsSubGraph JoinToSubGraph<TCollection>(this TCollection entities, IComponentMask mask, EcsSubGraphMode mode = EcsSubGraphMode.StartToEnd)
+        public static EcsSubGraph JoinSubGraph<TCollection>(this TCollection entities, IComponentMask mask, EcsSubGraphMode mode = EcsSubGraphMode.StartToEnd)
             where TCollection : IEntityStorage
         {
             if (ReferenceEquals(entities, entities.World))
@@ -22,13 +22,13 @@ namespace DCFApixels.DragonECS
                 var executor = entities.World.GetExecutorForMask<JoinToSubGraphExecutor>(mask);
                 return executor.Execute();
             }
-            return entities.ToSpan().JoinToSubGraph(mask, mode);
+            return entities.ToSpan().JoinSubGraph(mask, mode);
         }
-        public static EcsSubGraph JoinToSubGraph(this EcsReadonlyGroup group, IComponentMask mask, EcsSubGraphMode mode = EcsSubGraphMode.StartToEnd)
+        public static EcsSubGraph JoinSubGraph(this EcsReadonlyGroup group, IComponentMask mask, EcsSubGraphMode mode = EcsSubGraphMode.StartToEnd)
         {
-            return group.ToSpan().JoinToSubGraph(mask, mode);
+            return group.ToSpan().JoinSubGraph(mask, mode);
         }
-        public static EcsSubGraph JoinToSubGraph(this EcsSpan span, IComponentMask mask, EcsSubGraphMode mode = EcsSubGraphMode.StartToEnd)
+        public static EcsSubGraph JoinSubGraph(this EcsSpan span, IComponentMask mask, EcsSubGraphMode mode = EcsSubGraphMode.StartToEnd)
         {
             var executor = span.World.GetExecutorForMask<JoinToSubGraphExecutor>(mask);
             return executor.ExecuteFor(span, mode);
@@ -36,7 +36,7 @@ namespace DCFApixels.DragonECS
         #endregion
 
         #region JoinToGraph
-        public static EcsSubGraph JoinToSubGraph<TCollection, TAspect>(this TCollection entities, out TAspect aspect, EcsSubGraphMode mode = EcsSubGraphMode.StartToEnd)
+        public static EcsSubGraph JoinSubGraph<TCollection, TAspect>(this TCollection entities, out TAspect aspect, EcsSubGraphMode mode = EcsSubGraphMode.StartToEnd)
             where TAspect : EcsAspect, new()
             where TCollection : IEntityStorage
         {
@@ -45,14 +45,14 @@ namespace DCFApixels.DragonECS
                 entities.World.GetQueryCache(out JoinToSubGraphExecutor executor, out aspect);
                 return executor.Execute();
             }
-            return entities.ToSpan().JoinToSubGraph(out aspect, mode);
+            return entities.ToSpan().JoinSubGraph(out aspect, mode);
         }
-        public static EcsSubGraph JoinToSubGraph<TAspect>(this EcsReadonlyGroup group, out TAspect aspect, EcsSubGraphMode mode = EcsSubGraphMode.StartToEnd)
+        public static EcsSubGraph JoinSubGraph<TAspect>(this EcsReadonlyGroup group, out TAspect aspect, EcsSubGraphMode mode = EcsSubGraphMode.StartToEnd)
             where TAspect : EcsAspect, new()
         {
-            return group.ToSpan().JoinToSubGraph(out aspect, mode);
+            return group.ToSpan().JoinSubGraph(out aspect, mode);
         }
-        public static EcsSubGraph JoinToSubGraph<TAspect>(this EcsSpan span, out TAspect aspect, EcsSubGraphMode mode = EcsSubGraphMode.StartToEnd)
+        public static EcsSubGraph JoinSubGraph<TAspect>(this EcsSpan span, out TAspect aspect, EcsSubGraphMode mode = EcsSubGraphMode.StartToEnd)
             where TAspect : EcsAspect, new()
         {
             span.World.GetQueryCache(out JoinToSubGraphExecutor executor, out aspect);

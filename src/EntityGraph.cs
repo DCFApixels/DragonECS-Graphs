@@ -239,7 +239,7 @@ namespace DCFApixels.DragonECS
                 EcsSubGraph subGraph;
                 EcsWorld graphWorld = _graph._graphWorld;
 
-                subGraph = graphWorld.JoinToSubGraph(EcsSubGraphMode.All);
+                subGraph = graphWorld.JoinGraph(EcsSubGraphMode.All);
                 foreach (var sourceE in delEntities)
                 {
                     var relEs = subGraph.GetRelations(sourceE);
