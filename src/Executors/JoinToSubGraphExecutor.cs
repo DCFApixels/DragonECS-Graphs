@@ -121,14 +121,14 @@ namespace DCFApixels.DragonECS.Graphs.Internal
             _linkedList.Clear();
 
             //Заполнение массивов
-            if ((mode & JoinMode.StartToEnd) != 0)
+            if ((mode & JoinMode.Start) != 0)
             {
                 for (int i = 0; i < _filteredAllEntitiesCount; i++)
                 {
                     AddStart(_filteredAllEntities[i]);
                 }
             }
-            if ((mode & JoinMode.EndToStart) != 0)
+            if ((mode & JoinMode.End) != 0)
             {
                 for (int i = 0; i < _filteredAllEntitiesCount; i++)
                 {
@@ -184,14 +184,14 @@ namespace DCFApixels.DragonECS.Graphs.Internal
             _linkedList.Clear();
 
             //Заполнение массивов
-            if ((mode & JoinMode.StartToEnd) != 0)
+            if ((mode & JoinMode.Start) != 0)
             {
                 for (int i = 0; i < _filteredEntitiesCount; i++)
                 {
                     AddStart(_filteredEntities[i]);
                 }
             }
-            if ((mode & JoinMode.EndToStart) != 0)
+            if ((mode & JoinMode.End) != 0)
             {
                 for (int i = 0; i < _filteredEntitiesCount; i++)
                 {
@@ -204,11 +204,11 @@ namespace DCFApixels.DragonECS.Graphs.Internal
             return new SubGraphMap(this);
         }
 
-        public SubGraphMap Execute(JoinMode mode = JoinMode.StartToEnd)
+        public SubGraphMap Execute(JoinMode mode = JoinMode.Start)
         {
             return Execute_Internal(mode);
         }
-        public SubGraphMap ExecuteFor(EcsSpan span, JoinMode mode = JoinMode.StartToEnd)
+        public SubGraphMap ExecuteFor(EcsSpan span, JoinMode mode = JoinMode.Start)
         {
             return ExecuteFor_Internal(span, mode);
         }
@@ -308,9 +308,9 @@ namespace DCFApixels.DragonECS
     public enum JoinMode : byte
     {
         NONE = 0,
-        StartToEnd = 1 << 0,
-        EndToStart = 1 << 1,
-        All = StartToEnd | EndToStart,
+        Start = 1 << 0,
+        End = 1 << 1,
+        All = Start | End,
     }
 
     #region SubGraphMap/SubGraphMapNode
