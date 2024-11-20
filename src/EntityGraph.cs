@@ -227,6 +227,7 @@ namespace DCFApixels.DragonECS
             {
                 _graph = arc;
                 _graph.World.AddListener(this);
+                IntHash.InitFor(_graph.World.Capacity);
             }
             public void Destroy()
             {
