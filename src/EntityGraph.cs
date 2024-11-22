@@ -236,10 +236,10 @@ namespace DCFApixels.DragonECS
             #region Callbacks
             public void OnReleaseDelEntityBuffer(ReadOnlySpan<int> delEntities)
             {
-                EcsSubGraph subGraph;
+                SubGraphMap subGraph;
                 EcsWorld graphWorld = _graph._graphWorld;
 
-                subGraph = graphWorld.JoinToSubGraph(EcsSubGraphMode.All);
+                subGraph = graphWorld.Join(JoinMode.All);
                 foreach (var sourceE in delEntities)
                 {
                     var relEs = subGraph.GetRelations(sourceE);

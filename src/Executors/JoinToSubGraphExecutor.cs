@@ -3,12 +3,13 @@ using DCFApixels.DragonECS.Graphs.Internal;
 using DCFApixels.DragonECS.UncheckedCore;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using LinkedList = DCFApixels.DragonECS.Graphs.Internal.OnlyAppendHeadLinkedList;
 
 namespace DCFApixels.DragonECS.Graphs.Internal
 {
-    internal sealed class JoinToSubGraphExecutor : MaskQueryExecutor, IEcsWorldEventListener
+    internal sealed class JoinExecutor : MaskQueryExecutor, IEcsWorldEventListener
     {
         private EntityGraph _graph;
         private EcsMaskIterator _iterator;
@@ -62,6 +63,11 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         #region OnInitialize/OnDestroy
         protected override void OnInitialize()
         {
+            if (World.IsGraphWorld() == false)
+            {
+                Throw.Exception("The JounSubGraph query can only be used for EntityGraph.GraphWorld or a collection of that world.");
+            }
+
             _versionsChecker = new WorldStateVersionsChecker(Mask);
             _linkedList = new OnlyAppendHeadLinkedList(World.Capacity);
             _linkedListSourceHeads = new LinkedListHead[World.Capacity];
@@ -81,7 +87,7 @@ namespace DCFApixels.DragonECS.Graphs.Internal
 
         #region Execute
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private EcsSubGraph Execute_Internal(EcsSubGraphMode mode)
+        private SubGraphMap Execute_Internal(JoinMode mode)
         {
             //_executeMarker.Begin();
 
@@ -121,14 +127,14 @@ namespace DCFApixels.DragonECS.Graphs.Internal
             _linkedList.Clear();
 
             //Заполнение массивов
-            if ((mode & EcsSubGraphMode.StartToEnd) != 0)
+            if ((mode & JoinMode.Start) != 0)
             {
                 for (int i = 0; i < _filteredAllEntitiesCount; i++)
                 {
                     AddStart(_filteredAllEntities[i]);
                 }
             }
-            if ((mode & EcsSubGraphMode.EndToStart) != 0)
+            if ((mode & JoinMode.End) != 0)
             {
                 for (int i = 0; i < _filteredAllEntitiesCount; i++)
                 {
@@ -140,10 +146,10 @@ namespace DCFApixels.DragonECS.Graphs.Internal
             _version++;
 
             //_executeMarker.End();
-            return new EcsSubGraph(this);
+            return new SubGraphMap(this);
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private EcsSubGraph ExecuteFor_Internal(EcsSpan span, EcsSubGraphMode mode)
+        private SubGraphMap ExecuteFor_Internal(EcsSpan span, JoinMode mode)
         {
             //_executeMarker.Begin();
 #if (DEBUG && !DISABLE_DEBUG) || ENABLE_DRAGONECS_ASSERT_CHEKS
@@ -184,14 +190,14 @@ namespace DCFApixels.DragonECS.Graphs.Internal
             _linkedList.Clear();
 
             //Заполнение массивов
-            if ((mode & EcsSubGraphMode.StartToEnd) != 0)
+            if ((mode & JoinMode.Start) != 0)
             {
                 for (int i = 0; i < _filteredEntitiesCount; i++)
                 {
                     AddStart(_filteredEntities[i]);
                 }
             }
-            if ((mode & EcsSubGraphMode.EndToStart) != 0)
+            if ((mode & JoinMode.End) != 0)
             {
                 for (int i = 0; i < _filteredEntitiesCount; i++)
                 {
@@ -201,14 +207,14 @@ namespace DCFApixels.DragonECS.Graphs.Internal
 
 
             //_executeMarker.End();
-            return new EcsSubGraph(this);
+            return new SubGraphMap(this);
         }
 
-        public EcsSubGraph Execute(EcsSubGraphMode mode = EcsSubGraphMode.StartToEnd)
+        public SubGraphMap Execute(JoinMode mode = JoinMode.Start)
         {
             return Execute_Internal(mode);
         }
-        public EcsSubGraph ExecuteFor(EcsSpan span, EcsSubGraphMode mode = EcsSubGraphMode.StartToEnd)
+        public SubGraphMap ExecuteFor(EcsSpan span, JoinMode mode = JoinMode.Start)
         {
             return ExecuteFor_Internal(span, mode);
         }
@@ -246,10 +252,10 @@ namespace DCFApixels.DragonECS.Graphs.Internal
 
         #region Internal result methods
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal EcsSubGraphSpan GetRelations_Internal(int sourceEntityID)
+        internal SubGraphMap.NodeInfo GetRelations_Internal(int sourceEntityID)
         {
             LinkedListHead basket = _linkedListSourceHeads[sourceEntityID];
-            return new EcsSubGraphSpan(_linkedList._nodes, basket.head, basket.count);
+            return new SubGraphMap.NodeInfo(_linkedList._nodes, basket.head, basket.count);
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal int GetRelation_Internal(int sourceEntityID)
@@ -291,7 +297,7 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         #endregion
 
         #region GetEntites
-        internal EcsSpan GetSourceEntities()
+        internal EcsSpan GetNodeEntities()
         {
             return UncheckedCoreUtility.CreateSpan(WorldID, _sourceEntities, _sourceEntitiesCount);
         }
@@ -305,114 +311,143 @@ namespace DCFApixels.DragonECS.Graphs.Internal
 
 namespace DCFApixels.DragonECS
 {
-    public enum EcsSubGraphMode : byte
+    public enum JoinMode : byte
     {
         NONE = 0,
-        StartToEnd = 1 << 0,
-        EndToStart = 1 << 1,
-        All = StartToEnd | EndToStart,
+        Start = 1 << 0,
+        End = 1 << 1,
+        All = Start | End,
     }
 
-    #region EcsSubGraphSpan/EcsSubGraph
-    public readonly ref struct EcsSubGraph
+    #region SubGraphMap
+    public readonly ref struct SubGraphMap
     {
-        private readonly JoinToSubGraphExecutor _executer;
+        private readonly JoinExecutor _executer;
         public EntityGraph Graph
         {
             get { return _executer.Graph; }
         }
-        internal EcsSubGraph(JoinToSubGraphExecutor executer)
+        internal SubGraphMap(JoinExecutor executer)
         {
             _executer = executer;
         }
-        public EcsSpan GetSourceEntities()
+
+        public EcsSpan WhereNodes<TAspect>(out TAspect a)
+            where TAspect : EcsAspect, new()
         {
-            return _executer.GetSourceEntities();
+            return _executer.GetNodeEntities().Where(out a);
         }
-        public EcsSpan GetAllRelEntities()
+        public EcsSpan WhereNodes<TAspect>(IComponentMask mask)
+        {
+            return _executer.GetNodeEntities().Where(mask);
+        }
+        public EcsSpan WhereNodes<TAspect>(out TAspect a, Comparison<int> comparison)
+            where TAspect : EcsAspect, new()
+        {
+            return _executer.GetNodeEntities().Where(out a, comparison);
+        }
+        public EcsSpan WhereNodes<TAspect>(IComponentMask mask, Comparison<int> comparison)
+        {
+            return _executer.GetNodeEntities().Where(mask, comparison);
+        }
+
+        public EcsSpan GetNodes()
+        {
+            return _executer.GetNodeEntities();
+        }
+        public EcsSpan GetAllRelations()
         {
             return _executer.GetRelEntities();
         }
-        public EcsSubGraphSpan GetRelations(int startEntityID)
-        {
-            return _executer.GetRelations_Internal(startEntityID);
-        }
-        public int GetRelation(int startEntityID)
-        {
-            return _executer.GetRelation_Internal(startEntityID);
-        }
-        public int GetRelationsCount(int startEntityID)
-        {
-            return _executer.GetRelationsCount_Internal(startEntityID);
-        }
-    }
 
-    public readonly ref struct EcsSubGraphSpan
-    {
-        public static EcsSubGraphSpan Empty
+        public NodeInfo GetRelations(int nodeEntityID)
         {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get { return new EcsSubGraphSpan(null, 0, 0); }
+            return _executer.GetRelations_Internal(nodeEntityID);
         }
 
-        private readonly LinkedList.Node[] _nodes;
-        private readonly LinkedList.NodeIndex _startNodeIndex;
-        private readonly int _count;
-        public int Count
+        public int GetRelation(int nodeEntityID)
         {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get { return _count; }
+            return _executer.GetRelation_Internal(nodeEntityID);
         }
-        private IEnumerable<int> E
+        public int GetRelationsCount(int nodeEntityID)
         {
-            get
-            {
-                List<int> result = new List<int>();
-                foreach (var item in this)
-                {
-                    result.Add(item);
-                }
-                return result;
-            }
+            return _executer.GetRelationsCount_Internal(nodeEntityID);
         }
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal EcsSubGraphSpan(LinkedList.Node[] nodes, LinkedList.NodeIndex startNodeIndex, int count)
-        {
-            _nodes = nodes;
-            _startNodeIndex = startNodeIndex;
-            _count = count;
-        }
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Enumerator GetEnumerator()
-        {
-            return new Enumerator(_nodes, _startNodeIndex, _count);
-        }
-        public ref struct Enumerator
+
+        [DebuggerTypeProxy(typeof(DebuggerProxy))]
+        public readonly ref struct NodeInfo
         {
             private readonly LinkedList.Node[] _nodes;
-            private int _index;
-            private int _count;
-            private int _next;
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            internal Enumerator(LinkedList.Node[] nodes, LinkedList.NodeIndex startIndex, int count)
-            {
-                _nodes = nodes;
-                _index = -1;
-                _count = count;
-                _next = (int)startIndex;
-            }
-            public int Current
+            private readonly LinkedList.NodeIndex _startNodeIndex;
+            private readonly int _count;
+            public int Count
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                get { return _nodes[_index].entityID; }
+                get { return _count; }
             }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public bool MoveNext()
+            internal NodeInfo(LinkedList.Node[] nodes, LinkedList.NodeIndex startNodeIndex, int count)
             {
-                _index = _next;
-                _next = (int)_nodes[_next].next;
-                return _index > 0 && _count-- > 0;
-                //return _count-- > 0;
+                _nodes = nodes;
+                _startNodeIndex = startNodeIndex;
+                _count = count;
+            }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public Enumerator GetEnumerator()
+            {
+                return new Enumerator(_nodes, _startNodeIndex, _count);
+            }
+            public ref struct Enumerator
+            {
+                private readonly LinkedList.Node[] _nodes;
+                private int _index;
+                private int _count;
+                private int _next;
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                internal Enumerator(LinkedList.Node[] nodes, LinkedList.NodeIndex startIndex, int count)
+                {
+                    _nodes = nodes;
+                    _index = -1;
+                    _count = count;
+                    _next = (int)startIndex;
+                }
+                public int Current
+                {
+                    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                    get { return _nodes[_index].entityID; }
+                }
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public bool MoveNext()
+                {
+                    _index = _next;
+                    _next = (int)_nodes[_next].next;
+                    return _index > 0 && _count-- > 0;
+                    //return _count-- > 0;
+                }
+            }
+            private class DebuggerProxy
+            {
+                private readonly LinkedList.Node[] _nodes;
+                private readonly LinkedList.NodeIndex _startNodeIndex;
+                private readonly int _count;
+                private IEnumerable<int> Entities
+                {
+                    get
+                    {
+                        List<int> result = new List<int>();
+                        foreach (var item in new NodeInfo(_nodes, _startNodeIndex, _count))
+                        {
+                            result.Add(item);
+                        }
+                        return result;
+                    }
+                }
+                public DebuggerProxy(NodeInfo node)
+                {
+                    _nodes = node._nodes;
+                    _startNodeIndex = node._startNodeIndex;
+                    _count = node._count;
+                }
             }
         }
     }

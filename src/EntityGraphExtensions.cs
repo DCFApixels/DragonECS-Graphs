@@ -71,6 +71,15 @@ namespace DCFApixels.DragonECS
             Throw.UndefinedException();
             return null;
         }
+        public static EcsWorld GetGraphWorld(this EcsWorld self)
+        {
+            if (self.TryGetGraph(out EntityGraph graph))
+            {
+                return graph.GraphWorld;
+            }
+            Throw.UndefinedException();
+            return null;
+        }
 
         public static bool IsGraphWorld(this EcsWorld self)
         {

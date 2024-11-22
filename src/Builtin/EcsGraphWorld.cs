@@ -1,7 +1,6 @@
-﻿using DCFApixels.DragonECS;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 
-namespace DCFApixels.Assets.Plugins.DragonECS_Graphs.src.Builtin
+namespace DCFApixels.DragonECS
 {
     /// <summary> EcsWrold for store regular game entities. </summary>
     [MetaColor(MetaColor.DragonRose)]
