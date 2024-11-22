@@ -35,7 +35,7 @@
 
 </br>
 
-Text Text Text Text Text Text Text Text Text Text Text Text Text Text Text Text Text Text Text Text Text Text Text Text Text Text Text Text Text Text Text Text Text Text Text Text Text Text Text Text Text Text Text Text Text Text Text Text Text Text Text Text Text Text 
+Implementation of entity relationships in the form of a graph. The connecting edges of the graph are represented as entities, which allows the creation of many-to-many relationships, and using composition it is possible to customize the relations.
 
 > [!WARNING]
 > The project is a work in progress, API may change.
@@ -67,3 +67,7 @@ https://github.com/DCFApixels/DragonECS-Graphs.git
 The package can also be added to the project as source code.
 
 </br>
+
+
+> [!WARNING]
+> While the English version of the README is incomplete, you can view the [Russian version](https://github.com/DCFApixels/DragonECS-Graphs/blob/main/README-RU.md).
