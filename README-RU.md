@@ -71,7 +71,7 @@ https://github.com/DCFApixels/DragonECS-Graphs.git
 </br>
 
 # Граф
-Для начала нужно создать граф реализованный классом `EntityGraph`. Графу требуется 2 мира: обычный мир и мир для сущностей-связей. Пример создания `EntityGraph`:
+Ключевой класс в котором хранится информация об отношениях. Графу требуется 2 мира: обычный мир и мир для сущностей-связей. Пример создания `EntityGraph`:
 ```c#
 // Обычный мир.
 _world = new EcsDefaultWorld();
@@ -88,7 +88,7 @@ _pipeline = EcsPipeline.New()
     // ...
     .Build()
 ```
-Можно использовать один мир для обычных сущностей и для сущностей-связей. 
+Для обычных сущностей и для сущностей-связей может использовать один общий мир:
 ```c#
 _world = new EcsDefaultWorld();
 // Создание EntityGraph завязанный на одном мире.
@@ -97,19 +97,19 @@ EntityGraph graph = _world.CreateGraph();
 
 # Сущность-связь
 
-Как и обычная сущность, но управляется и создается в `EntityGraph` и предназначена для данных об отношении двух сущностей.
+Как и обычная сущность, но регистрируется и создается в `EntityGraph`. Предназначена для данных об отношении двух сущностей.
 
-> Отношения имеют направление, поэтому чтобы разделять сущности, далее будет использованы понятия: начальная сущность(`Start Entity`) от нее исходит сущность-связъ(`Relation Entity`) к конечной сущности(`End Entity`).
-```
-(Start Entity) ─── (Relation Entity) ──► (End Entity)
-```
+> Отношения имеют направление, поэтому чтобы разделять сущности, далее будет использованы понятия: начальная сущность(`Start Entity`) от нее исходит сущность-связъ(`Relation Entity`) к конечной сущности(`End Entity`). Начальная и конечная сущность это сущности-узлы(`Node Entity`).
+> 
+> (Start Entity) ── (Relation Entity) ─》(End Entity)
+
 Пример работы с связями:
 ```c#
-// Получаем или создаем новую сущность-связь от сущности `startE` к `endE`.
+// Получаем или создаем новую сущность-связь от узлов `startE` к `endE`.
 // Сущность создается в мире _graph.GraphWorld и регистрируется в графе.
 var relE = _graph.GetOrNewRelation(startE, endE);
 
-// Кроме создания и удаления, в остальном сущности-свящи - это обычные сущности.
+// Кроме создания и удаления, в остальном сущности-связи - это обычные сущности.
 ref var someCmp = ref _somePool.Add(relE);
 
 // Вернет true если была создана через EntityGraph.GetOrNewRelation(startE, endE)
@@ -122,10 +122,137 @@ bool isRelation = _graph.IsRelation(relE);
 // Взять сущность-связь для отношения в обратном направлении, от `endE` к `startE`.
 _graph.GetOrNewInverseRelation(relE);
 
-// Удаляем сущность связь.
+// Удаляем сущность-связь.
 _graph.DelRelation(relE);
 ```
 
 # Запрос Join
 
 Сопоставляет сущности-связи с привязанными сущностями. Возвращает структуру `SubGraphMap` которая позволяет итерироваться по сопоставленным сущностями-связям.
+
+```c#
+// Запросом Where получем сущности-связи, потом запросом Join сопоставляем их с конечными сущностями.
+// Аргумент JoinMode.End указывает что сопоставлять нужно с конечными сущностями.
+SubGraphMap map = _graph.GraphWorld.Where(out EventAspect relA).Join(JoinMode.End);
+// map.Nodes это список конечных сущностей.
+foreach (var endE in map.Nodes.Where(out Aspect a))
+{
+    // ...
+    // Итерация по сопоставленным сущностям-связям.
+    foreach (var relE in map.GetRelations(endE))
+    {
+        // ...
+    }
+}
+```
+
+# Пример кода
+
+Ниже приведен пример как бы могли быть реализованы системы нанесения урона взрывом и система применения урона к здоровью. Этот пример поверхностный реализации, но достаточно нагляден и демонстрирует основные функции расширения.
+<details>
+<summary>Использованные в примере компоненты</summary>
+
+```c#
+public struct Explosion : IEcsComponent
+{
+    public float damage;
+    public float radius;
+}
+public struct Health : IEcsComponent
+{
+    public float points;
+}
+public struct Transform : IEcsComponent
+{
+    public Vector3 position;
+}
+
+// Компоненты для связей.
+public struct DamageEvent : IEcsComponent
+{
+    public float points;
+}
+public struct KillEvent : IEcsTagComponent { }
+```
+
+</details>
+
+```c#
+public class SomeExplosionHitSystem : IEcsRun, IEcsInject<EntityGraph>, IEcsInject<SpatialService>
+{
+    class EventAspect : EcsAspect
+    {
+        public EcsPool<DamageEvent> damageEvents = Inc;
+    }
+    class Aspect : EcsAspect
+    {
+        public EcsPool<Transform> transforms = Inc;
+        public EcsPool<Explosion> explosions = Inc;
+    }
+    EntityGraph _graph;
+    SpatialService _spatial;
+
+    public void Run()
+    {
+        var relA = _graph.GraphWorld.GetAspect<EventAspect>();
+        foreach (var e in _graph.World.Where(out Aspect a))
+        {
+            ref var transform = ref a.transforms.Get(e);
+            ref var explosion = ref a.explosions.Get(e);
+            // Получаем все сущности рядом со взрывом.
+            // Реализация опущена, можно реализовать на основе Quad Tree, Spatial hashing или при помощи методов физики движка.
+            EcsSpan targetEs = _spatial.GetEntitiesInRadius(transform.position, explosion.radius);
+
+            foreach (var targetE in targetEs)
+            {
+                // Получаем сущность-связь от `e` к `targetE`.
+                var relE = _graph.GetOrNewRelation(e, targetE);
+                // Создаем событие нанесения урона.
+                ref var damageEvent = ref relA.damageEvents.TryAddOrGet(relE);
+                damageEvent.points = explosion.damage;
+            }
+        }
+    }
+    public void Inject(EntityGraph obj) => _graph = obj;
+    public void Inject(SpatialService obj) => _spatial = obj;
+}
+```
+```c#
+public class SomeApplyDamageSystem : IEcsRun, IEcsInject<EntityGraph>
+{
+    class EventAspect : EcsAspect
+    {
+        public EcsPool<DamageEvent> damageEvents = Inc;
+        public EcsTagPool<KillEvent> killEvents = Opt;
+    }
+    class Aspect : EcsAspect
+    {
+        public EcsPool<Health> healths = Inc;
+    }
+    EntityGraph _graph;
+    
+    public void Run()
+    {
+        // Запрос сущностей с DamageEvent и запрос Join для них.
+        SubGraphMap map = _graph.GraphWorld.Where(out EventAspect relA).Join(JoinMode.End);
+        // Фильтруем конечные сущности наа наличие Health и итерируемся по ним.
+        foreach (var endE in map.Nodes.Where(out Aspect a))
+        {
+            ref var health = ref a.healths.Get(endE);
+            bool isAlive = health.points > 0;
+            foreach (var relE in map.GetRelations(endE))
+            {
+                ref var damage = ref relA.damageEvents.Get(relE);
+                health.points -= damage.points;
+                if (isAlive && health.points <= 0)
+                {
+                    // Добавляем в сущность связь тег сигнализирующий что
+                    // источник урона так же убил сущность.
+                    relA.killEvents.TryAdd(relE);
+                }
+            }
+        }
+    }
+    public void Inject(EntityGraph obj) => _graph = obj;
+}
+```
