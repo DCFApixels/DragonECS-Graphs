@@ -188,7 +188,7 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         #region GetEntites
         internal EcsSpan GetNodeEntities()
         {
-            return UncheckedCoreUtility.CreateSpan(_graphWorld.ID, _sourceEntities, _sourceEntitiesCount);
+            return UncheckedCoreUtility.CreateSpan(_graph.World.ID, _sourceEntities, _sourceEntitiesCount);
         }
         #endregion
     }
