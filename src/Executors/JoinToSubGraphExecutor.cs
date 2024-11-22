@@ -1,5 +1,4 @@
-﻿using DCFApixels.DragonECS.Core;
-using DCFApixels.DragonECS.Graphs.Internal;
+﻿using DCFApixels.DragonECS.Graphs.Internal;
 using DCFApixels.DragonECS.UncheckedCore;
 using System;
 using System.Collections.Generic;
@@ -9,21 +8,12 @@ using LinkedList = DCFApixels.DragonECS.Graphs.Internal.OnlyAppendHeadLinkedList
 
 namespace DCFApixels.DragonECS.Graphs.Internal
 {
-    internal sealed class JoinExecutor : MaskQueryExecutor, IEcsWorldEventListener
+    internal sealed class JoinExecutor : IEcsWorldEventListener
     {
+        private EcsWorld _graphWorld;
         private EntityGraph _graph;
-        private EcsMaskIterator _iterator;
-
-        private int[] _filteredAllEntities = new int[32];
-        private int _filteredAllEntitiesCount = 0;
-        private int[] _filteredEntities = null;
-        private int _filteredEntitiesCount = 0;
-
-        private int[] _currentFilteredEntities = null;
-        private int _currentFilteredEntitiesCount = 0;
 
         private long _version;
-        private WorldStateVersionsChecker _versionsChecker;
 
         private LinkedList _linkedList;
         private LinkedListHead[] _linkedListSourceHeads;
@@ -36,9 +26,8 @@ namespace DCFApixels.DragonECS.Graphs.Internal
 
         public bool _isDestroyed = false;
 
-
         #region Properties
-        public sealed override long Version
+        public long Version
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return _version; }
@@ -48,133 +37,39 @@ namespace DCFApixels.DragonECS.Graphs.Internal
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return _graph; }
         }
-        public sealed override bool IsCached
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get { return _versionsChecker.Check(); }
-        }
-        public sealed override int LastCachedCount
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get { return _filteredAllEntitiesCount; }
-        }
         #endregion
 
-        #region OnInitialize/OnDestroy
-        protected override void OnInitialize()
+        #region Constructors/OnDestroy
+        public JoinExecutor(EcsWorld world)
         {
-            if (World.IsGraphWorld() == false)
-            {
-                Throw.Exception("The JounSubGraph query can only be used for EntityGraph.GraphWorld or a collection of that world.");
-            }
-
-            _versionsChecker = new WorldStateVersionsChecker(Mask);
-            _linkedList = new OnlyAppendHeadLinkedList(World.Capacity);
-            _linkedListSourceHeads = new LinkedListHead[World.Capacity];
-            _sourceEntities = new int[World.Capacity * 2];
-            World.AddListener(this);
-            _graph = World.GetGraph();
-            _iterator = Mask.GetIterator();
+            _graphWorld = world;
+            _linkedList = new OnlyAppendHeadLinkedList(_graphWorld.Capacity);
+            _linkedListSourceHeads = new LinkedListHead[_graphWorld.Capacity];
+            _sourceEntities = new int[_graphWorld.Capacity * 2];
+            _graphWorld.AddListener(this);
+            _graph = _graphWorld.GetGraph();
         }
-        protected override void OnDestroy()
+        public void Destroy()
         {
             if (_isDestroyed) { return; }
             _isDestroyed = true;
-            World.RemoveListener(this);
-            _versionsChecker.Dispose();
+            _graphWorld.RemoveListener(this);
         }
         #endregion
 
         #region Execute
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private SubGraphMap Execute_Internal(JoinMode mode)
-        {
-            //_executeMarker.Begin();
-
-            World.ReleaseDelEntityBufferAllAuto();
-
-            if (Mask.IsEmpty || _versionsChecker.CheckAndNext() == false)
-            {
-                _filteredAllEntitiesCount = _iterator.IterateTo(World.Entities, ref _filteredAllEntities);
-                if (_sourceEntities.Length < _graph.World.Capacity * 2)
-                {
-                    _sourceEntities = new int[_graph.World.Capacity * 2];
-                }
-                //Подготовка массивов
-            }
-
-
-            //установка текущего массива
-            _currentFilteredEntities = _filteredAllEntities;
-            _currentFilteredEntitiesCount = _filteredAllEntitiesCount;
-
-            //Подготовка массивов
-            if (_targetWorldCapacity < _graph.World.Capacity)
-            {
-                _targetWorldCapacity = _graph.World.Capacity;
-                _linkedListSourceHeads = new LinkedListHead[_targetWorldCapacity];
-                //_startEntities = new int[_targetWorldCapacity];
-            }
-            else
-            {
-                //ArrayUtility.Fill(_linkedListSourceHeads, default); //TODO оптимизировать, сделав не полную отчистку а только по элементов с прошлого раза
-                for (int i = 0; i < _sourceEntitiesCount; i++)
-                {
-                    _linkedListSourceHeads[_sourceEntities[i]] = default;
-                }
-            }
-            _sourceEntitiesCount = 0;
-            _linkedList.Clear();
-
-            //Заполнение массивов
-            if ((mode & JoinMode.Start) != 0)
-            {
-                for (int i = 0; i < _filteredAllEntitiesCount; i++)
-                {
-                    AddStart(_filteredAllEntities[i]);
-                }
-            }
-            if ((mode & JoinMode.End) != 0)
-            {
-                for (int i = 0; i < _filteredAllEntitiesCount; i++)
-                {
-                    AddEnd(_filteredAllEntities[i]);
-                }
-            }
-
-
-            _version++;
-
-            //_executeMarker.End();
-            return new SubGraphMap(this);
-        }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private SubGraphMap ExecuteFor_Internal(EcsSpan span, JoinMode mode)
         {
             //_executeMarker.Begin();
 #if (DEBUG && !DISABLE_DEBUG) || ENABLE_DRAGONECS_ASSERT_CHEKS
             if (span.IsNull) { /*_executeMarker.End();*/ Throw.ArgumentNull(nameof(span)); }
-            if (span.WorldID != World.ID) { /*_executeMarker.End();*/ Throw.Quiery_ArgumentDifferentWorldsException(); }
+            if (span.WorldID != _graphWorld.ID) { /*_executeMarker.End();*/ Throw.Quiery_ArgumentDifferentWorldsException(); }
 #endif
-            if (_filteredEntities == null)
-            {
-                _filteredEntities = new int[32];
-            }
-            _filteredEntitiesCount = _iterator.IterateTo(span, ref _filteredEntities);
-            if (_sourceEntities.Length < _filteredEntitiesCount * 2)
-            {
-                _sourceEntities = new int[_filteredEntitiesCount * 2];
-            }
-
-
-            //установка текущего массива
-            _currentFilteredEntities = _filteredEntities;
-            _currentFilteredEntitiesCount = _filteredEntitiesCount;
-
             //Подготовка массивов
-            if (_targetWorldCapacity < World.Capacity)
+            if (_targetWorldCapacity < _graphWorld.Capacity)
             {
-                _targetWorldCapacity = World.Capacity;
+                _targetWorldCapacity = _graphWorld.Capacity;
                 _linkedListSourceHeads = new LinkedListHead[_targetWorldCapacity];
                 //_startEntities = new int[_targetWorldCapacity];
             }
@@ -192,27 +87,21 @@ namespace DCFApixels.DragonECS.Graphs.Internal
             //Заполнение массивов
             if ((mode & JoinMode.Start) != 0)
             {
-                for (int i = 0; i < _filteredEntitiesCount; i++)
+                for (int i = 0, iMax = span.Count; i < iMax; i++)
                 {
-                    AddStart(_filteredEntities[i]);
+                    AddStart(span[i]);
                 }
             }
             if ((mode & JoinMode.End) != 0)
             {
-                for (int i = 0; i < _filteredEntitiesCount; i++)
+                for (int i = 0, iMax = span.Count; i < iMax; i++)
                 {
-                    AddEnd(_filteredEntities[i]);
+                    AddEnd(span[i]);
                 }
             }
 
-
             //_executeMarker.End();
             return new SubGraphMap(this);
-        }
-
-        public SubGraphMap Execute(JoinMode mode = JoinMode.Start)
-        {
-            return Execute_Internal(mode);
         }
         public SubGraphMap ExecuteFor(EcsSpan span, JoinMode mode = JoinMode.Start)
         {
@@ -299,11 +188,7 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         #region GetEntites
         internal EcsSpan GetNodeEntities()
         {
-            return UncheckedCoreUtility.CreateSpan(WorldID, _sourceEntities, _sourceEntitiesCount);
-        }
-        internal EcsSpan GetRelEntities()
-        {
-            return UncheckedCoreUtility.CreateSpan(WorldID, _currentFilteredEntities, _currentFilteredEntitiesCount);
+            return UncheckedCoreUtility.CreateSpan(_graphWorld.ID, _sourceEntities, _sourceEntitiesCount);
         }
         #endregion
     }
@@ -327,39 +212,15 @@ namespace DCFApixels.DragonECS
         {
             get { return _executer.Graph; }
         }
+        public EcsSpan Nodes
+        {
+            get { return _executer.GetNodeEntities(); }
+        }
+
         internal SubGraphMap(JoinExecutor executer)
         {
             _executer = executer;
         }
-
-        public EcsSpan WhereNodes<TAspect>(out TAspect a)
-            where TAspect : EcsAspect, new()
-        {
-            return _executer.GetNodeEntities().Where(out a);
-        }
-        public EcsSpan WhereNodes<TAspect>(IComponentMask mask)
-        {
-            return _executer.GetNodeEntities().Where(mask);
-        }
-        public EcsSpan WhereNodes<TAspect>(out TAspect a, Comparison<int> comparison)
-            where TAspect : EcsAspect, new()
-        {
-            return _executer.GetNodeEntities().Where(out a, comparison);
-        }
-        public EcsSpan WhereNodes<TAspect>(IComponentMask mask, Comparison<int> comparison)
-        {
-            return _executer.GetNodeEntities().Where(mask, comparison);
-        }
-
-        public EcsSpan GetNodes()
-        {
-            return _executer.GetNodeEntities();
-        }
-        public EcsSpan GetAllRelations()
-        {
-            return _executer.GetRelEntities();
-        }
-
         public NodeInfo GetRelations(int nodeEntityID)
         {
             return _executer.GetRelations_Internal(nodeEntityID);
