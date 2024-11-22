@@ -105,24 +105,27 @@ EntityGraph graph = _world.CreateGraph();
 ```
 Пример работы с связями:
 ```c#
-        // Получаем или создаем новую сущность-связь от сущности `startE` к `endE`.
-        // Сущность создается в мире _graph.GraphWorld и регистрируется в графе.
-        var relE = _graph.GetOrNewRelation(startE, endE);
+// Получаем или создаем новую сущность-связь от сущности `startE` к `endE`.
+// Сущность создается в мире _graph.GraphWorld и регистрируется в графе.
+var relE = _graph.GetOrNewRelation(startE, endE);
 
-        // Кроме создания и удаления, в остальном сущности-свящи - это обычные сущности.
-        ref var someCmp = ref _somePool.Add(relE);
+// Кроме создания и удаления, в остальном сущности-свящи - это обычные сущности.
+ref var someCmp = ref _somePool.Add(relE);
 
-        // Вернет true если была создана через EntityGraph.GetOrNewRelation(startE, endE)
-        // и false если через EcsWorld.NewEntity().
-        bool isRelation = _graph.IsRelation(relE);
+// Вернет true если была создана через EntityGraph.GetOrNewRelation(startE, endE)
+// и false если через EcsWorld.NewEntity().
+bool isRelation = _graph.IsRelation(relE);
 
-        // Взять сущность-связь для отношения в обратном направлении, от `endE` к `startE`.
-        _graph.GetOrNewInverseRelation(relE);
+// Получить начальную и конечную сущность.
+(startE, endE) = _graph.GetRelationStartEnd(relE);
 
-        // Удаляем сущность связь.
-        _graph.DelRelation(relE);
+// Взять сущность-связь для отношения в обратном направлении, от `endE` к `startE`.
+_graph.GetOrNewInverseRelation(relE);
+
+// Удаляем сущность связь.
+_graph.DelRelation(relE);
 ```
 
-# Запрос
+# Запрос Join
 
-
+Сопоставляет сущности-связи с привязанными сущностями. Возвращает структуру `SubGraphMap` которая позволяет итерироваться по сопоставленным сущностями-связям.
