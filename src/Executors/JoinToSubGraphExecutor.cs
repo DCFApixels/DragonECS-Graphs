@@ -3,12 +3,13 @@ using DCFApixels.DragonECS.Graphs.Internal;
 using DCFApixels.DragonECS.UncheckedCore;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using LinkedList = DCFApixels.DragonECS.Graphs.Internal.OnlyAppendHeadLinkedList;
 
 namespace DCFApixels.DragonECS.Graphs.Internal
 {
-    internal sealed class JoinToSubGraphExecutor : MaskQueryExecutor, IEcsWorldEventListener
+    internal sealed class JoinExecutor : MaskQueryExecutor, IEcsWorldEventListener
     {
         private EntityGraph _graph;
         private EcsMaskIterator _iterator;
@@ -62,6 +63,11 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         #region OnInitialize/OnDestroy
         protected override void OnInitialize()
         {
+            if (World.IsGraphWorld() == false)
+            {
+                Throw.Exception("The JounSubGraph query can only be used for EntityGraph.GraphWorld or a collection of that world.");
+            }
+
             _versionsChecker = new WorldStateVersionsChecker(Mask);
             _linkedList = new OnlyAppendHeadLinkedList(World.Capacity);
             _linkedListSourceHeads = new LinkedListHead[World.Capacity];
@@ -246,10 +252,10 @@ namespace DCFApixels.DragonECS.Graphs.Internal
 
         #region Internal result methods
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal SubGraphMap.Node GetRelations_Internal(int sourceEntityID)
+        internal SubGraphMap.NodeInfo GetRelations_Internal(int sourceEntityID)
         {
             LinkedListHead basket = _linkedListSourceHeads[sourceEntityID];
-            return new SubGraphMap.Node(_linkedList._nodes, basket.head, basket.count);
+            return new SubGraphMap.NodeInfo(_linkedList._nodes, basket.head, basket.count);
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal int GetRelation_Internal(int sourceEntityID)
@@ -291,7 +297,7 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         #endregion
 
         #region GetEntites
-        internal EcsSpan GetSourceEntities()
+        internal EcsSpan GetNodeEntities()
         {
             return UncheckedCoreUtility.CreateSpan(WorldID, _sourceEntities, _sourceEntitiesCount);
         }
@@ -313,47 +319,64 @@ namespace DCFApixels.DragonECS
         All = Start | End,
     }
 
-    #region SubGraphMap/SubGraphMapNode
+    #region SubGraphMap
     public readonly ref struct SubGraphMap
     {
-        private readonly JoinToSubGraphExecutor _executer;
+        private readonly JoinExecutor _executer;
         public EntityGraph Graph
         {
             get { return _executer.Graph; }
         }
-        internal SubGraphMap(JoinToSubGraphExecutor executer)
+        internal SubGraphMap(JoinExecutor executer)
         {
             _executer = executer;
         }
-        public EcsSpan GetSourceEntities()
+
+        public EcsSpan WhereNodes<TAspect>(out TAspect a)
+            where TAspect : EcsAspect, new()
         {
-            return _executer.GetSourceEntities();
+            return _executer.GetNodeEntities().Where(out a);
         }
-        public EcsSpan GetAllRelEntities()
+        public EcsSpan WhereNodes<TAspect>(IComponentMask mask)
+        {
+            return _executer.GetNodeEntities().Where(mask);
+        }
+        public EcsSpan WhereNodes<TAspect>(out TAspect a, Comparison<int> comparison)
+            where TAspect : EcsAspect, new()
+        {
+            return _executer.GetNodeEntities().Where(out a, comparison);
+        }
+        public EcsSpan WhereNodes<TAspect>(IComponentMask mask, Comparison<int> comparison)
+        {
+            return _executer.GetNodeEntities().Where(mask, comparison);
+        }
+
+        public EcsSpan GetNodes()
+        {
+            return _executer.GetNodeEntities();
+        }
+        public EcsSpan GetAllRelations()
         {
             return _executer.GetRelEntities();
         }
-        public Node GetRelations(int startEntityID)
+
+        public NodeInfo GetRelations(int nodeEntityID)
         {
-            return _executer.GetRelations_Internal(startEntityID);
-        }
-        public int GetRelation(int startEntityID)
-        {
-            return _executer.GetRelation_Internal(startEntityID);
-        }
-        public int GetRelationsCount(int startEntityID)
-        {
-            return _executer.GetRelationsCount_Internal(startEntityID);
+            return _executer.GetRelations_Internal(nodeEntityID);
         }
 
-        public readonly ref struct Node
+        public int GetRelation(int nodeEntityID)
         {
-            public static Node Empty
-            {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                get { return new Node(null, 0, 0); }
-            }
+            return _executer.GetRelation_Internal(nodeEntityID);
+        }
+        public int GetRelationsCount(int nodeEntityID)
+        {
+            return _executer.GetRelationsCount_Internal(nodeEntityID);
+        }
 
+        [DebuggerTypeProxy(typeof(DebuggerProxy))]
+        public readonly ref struct NodeInfo
+        {
             private readonly LinkedList.Node[] _nodes;
             private readonly LinkedList.NodeIndex _startNodeIndex;
             private readonly int _count;
@@ -362,20 +385,8 @@ namespace DCFApixels.DragonECS
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get { return _count; }
             }
-            private IEnumerable<int> E
-            {
-                get
-                {
-                    List<int> result = new List<int>();
-                    foreach (var item in this)
-                    {
-                        result.Add(item);
-                    }
-                    return result;
-                }
-            }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            internal Node(LinkedList.Node[] nodes, LinkedList.NodeIndex startNodeIndex, int count)
+            internal NodeInfo(LinkedList.Node[] nodes, LinkedList.NodeIndex startNodeIndex, int count)
             {
                 _nodes = nodes;
                 _startNodeIndex = startNodeIndex;
@@ -412,6 +423,30 @@ namespace DCFApixels.DragonECS
                     _next = (int)_nodes[_next].next;
                     return _index > 0 && _count-- > 0;
                     //return _count-- > 0;
+                }
+            }
+            private class DebuggerProxy
+            {
+                private readonly LinkedList.Node[] _nodes;
+                private readonly LinkedList.NodeIndex _startNodeIndex;
+                private readonly int _count;
+                private IEnumerable<int> Entities
+                {
+                    get
+                    {
+                        List<int> result = new List<int>();
+                        foreach (var item in new NodeInfo(_nodes, _startNodeIndex, _count))
+                        {
+                            result.Add(item);
+                        }
+                        return result;
+                    }
+                }
+                public DebuggerProxy(NodeInfo node)
+                {
+                    _nodes = node._nodes;
+                    _startNodeIndex = node._startNodeIndex;
+                    _count = node._count;
                 }
             }
         }
