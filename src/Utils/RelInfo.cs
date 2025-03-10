@@ -55,12 +55,23 @@ namespace DCFApixels.DragonECS
         public static bool operator !=(StartEnd a, StartEnd b) { return a.start != b.start || a.end != b.end; }
         #endregion
 
+        #region Methods
+        public int GetOpposite(int entityID)
+        {
+#if DEBUG
+            if (entityID != start && entityID != end) { Throw.UndefinedException(); }
+#endif
+            //return entityID > end ? end : start;
+            return entityID == end ? start : end;
+        }
+        #endregion
+
         #region Other
         public override int GetHashCode() { throw new NotSupportedException(); }
         public override bool Equals(object obj) { throw new NotSupportedException(); }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Equals(StartEnd other) { return this == other; }
-        public override string ToString() { return $"arc({start} -> {end})"; }
+        public override string ToString() { return $"rel({start} -> {end})"; }
         #endregion
     }
 }

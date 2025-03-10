@@ -1,5 +1,4 @@
 ﻿using DCFApixels.DragonECS.Graphs.Internal;
-using DCFApixels.DragonECS.UncheckedCore;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -18,8 +17,8 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         private LinkedList _linkedList;
         private LinkedListHead[] _linkedListSourceHeads;
 
-        private int[] _sourceEntities;
-        private int _sourceEntitiesCount;
+        //заменить на спарссет без пейджей
+        private EcsGroup _sourceEntities;
 
         private int _targetWorldCapacity = -1;
         //private EcsProfilerMarker _executeMarker = new EcsProfilerMarker("Join");
@@ -45,9 +44,9 @@ namespace DCFApixels.DragonECS.Graphs.Internal
             _graphWorld = world;
             _linkedList = new OnlyAppendHeadLinkedList(_graphWorld.Capacity);
             _linkedListSourceHeads = new LinkedListHead[_graphWorld.Capacity];
-            _sourceEntities = new int[_graphWorld.Capacity * 2];
             _graphWorld.AddListener(this);
             _graph = _graphWorld.GetGraph();
+            _sourceEntities = EcsGroup.New(_graph.World);
         }
         public void Destroy()
         {
@@ -76,12 +75,14 @@ namespace DCFApixels.DragonECS.Graphs.Internal
             else
             {
                 //ArrayUtility.Fill(_linkedListSourceHeads, default); //TODO оптимизировать, сделав не полную отчистку а только по элементов с прошлого раза
-                for (int i = 0; i < _sourceEntitiesCount; i++)
+                //for (int i = 0; i < _sourceEntitiesCount; i++)
+                for (int i = 0; i < _sourceEntities.Count; i++)
                 {
                     _linkedListSourceHeads[_sourceEntities[i]] = default;
                 }
             }
-            _sourceEntitiesCount = 0;
+            //_sourceEntitiesCount = 0;
+            _sourceEntities.Clear();
             _linkedList.Clear();
 
             //Заполнение массивов
@@ -125,10 +126,11 @@ namespace DCFApixels.DragonECS.Graphs.Internal
             {
                 return;
             }
+            _sourceEntities.Add(sourceEntityID);
             ref var basket = ref _linkedListSourceHeads[sourceEntityID];
+            //EcsDebug.Print("e" + sourceEntityID);
             if (basket.head == 0)
             {
-                _sourceEntities[_sourceEntitiesCount++] = sourceEntityID;
                 basket.head = _linkedList.NewHead(relationEntityID);
             }
             else
@@ -188,7 +190,8 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         #region GetEntites
         internal EcsSpan GetNodeEntities()
         {
-            return UncheckedCoreUtility.CreateSpan(_graph.World.ID, _sourceEntities, _sourceEntitiesCount);
+            //return UncheckedCoreUtility.CreateSpan(_graph.World.ID, _sourceEntities, _sourceEntitiesCount);
+            return _sourceEntities.ToSpan();
         }
         #endregion
     }
