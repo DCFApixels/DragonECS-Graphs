@@ -12,7 +12,7 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         private EcsWorld _graphWorld;
         private EntityGraph _graph;
 
-        private long _version;
+        private long _version = 0;
 
         private LinkedList _linkedList;
         private LinkedListHead[] _linkedListSourceHeads;
