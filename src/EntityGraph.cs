@@ -1,4 +1,7 @@
-﻿using DCFApixels.DragonECS.Core;
+﻿#if DISABLE_DEBUG
+#undef DEBUG
+#endif
+using DCFApixels.DragonECS.Core;
 using DCFApixels.DragonECS.Graphs.Internal;
 using System;
 using System.Runtime.CompilerServices;
@@ -92,7 +95,7 @@ namespace DCFApixels.DragonECS
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int GetOrNewInverseRelation(int relEntityID)
         {
-#if (DEBUG && !DISABLE_DEBUG) || !DISABLE_DRAGONECS_ASSERT_CHEKS
+#if DEBUG || !DISABLE_DRAGONECS_ASSERT_CHEKS
             if (relEntityID <= 0 || relEntityID >= _relEntityInfos.Length) { Throw.UndefinedException(); }
 #endif
             var info = _relEntityInfos[relEntityID];
@@ -134,7 +137,7 @@ namespace DCFApixels.DragonECS
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryGetInverseRelation(int relEntityID, out int inverseRelEntityID)
         {
-#if (DEBUG && !DISABLE_DEBUG) || !DISABLE_DRAGONECS_ASSERT_CHEKS
+#if DEBUG || !DISABLE_DRAGONECS_ASSERT_CHEKS
             if (relEntityID <= 0 || relEntityID >= _relEntityInfos.Length) { Throw.UndefinedException(); }
 #endif
             var info = _relEntityInfos[relEntityID];
@@ -166,7 +169,7 @@ namespace DCFApixels.DragonECS
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int GetRelationOpposite(int relEntityID, int nodeEntityID)
         {
-#if (DEBUG && !DISABLE_DEBUG) || !DISABLE_DRAGONECS_ASSERT_CHEKS
+#if DEBUG || !DISABLE_DRAGONECS_ASSERT_CHEKS
             if (relEntityID <= 0 || relEntityID >= _relEntityInfos.Length) { Throw.UndefinedException(); }
 #endif
             return new StartEnd(_relEntityInfos[relEntityID]).GetOpposite(nodeEntityID);
@@ -174,7 +177,7 @@ namespace DCFApixels.DragonECS
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public StartEnd GetRelationStartEnd(int relEntityID)
         {
-#if (DEBUG && !DISABLE_DEBUG) || !DISABLE_DRAGONECS_ASSERT_CHEKS
+#if DEBUG || !DISABLE_DRAGONECS_ASSERT_CHEKS
             if (relEntityID <= 0 || relEntityID >= _relEntityInfos.Length) { Throw.UndefinedException(); }
 #endif
             return new StartEnd(_relEntityInfos[relEntityID]);
@@ -182,7 +185,7 @@ namespace DCFApixels.DragonECS
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsRelationStart(int relEntityID, int nodeEntityID)
         {
-#if (DEBUG && !DISABLE_DEBUG) || !DISABLE_DRAGONECS_ASSERT_CHEKS
+#if DEBUG || !DISABLE_DRAGONECS_ASSERT_CHEKS
             if (relEntityID <= 0 || relEntityID >= _relEntityInfos.Length) { Throw.UndefinedException(); }
 #endif
             return _relEntityInfos[relEntityID].start == nodeEntityID;
@@ -190,7 +193,7 @@ namespace DCFApixels.DragonECS
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsRelationEnd(int relEntityID, int nodeEntityID)
         {
-#if (DEBUG && !DISABLE_DEBUG) || !DISABLE_DRAGONECS_ASSERT_CHEKS
+#if DEBUG || !DISABLE_DRAGONECS_ASSERT_CHEKS
             if (relEntityID <= 0 || relEntityID >= _relEntityInfos.Length) { Throw.UndefinedException(); }
 #endif
             return _relEntityInfos[relEntityID].end == nodeEntityID;
@@ -198,7 +201,7 @@ namespace DCFApixels.DragonECS
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int GetRelationStart(int relEntityID)
         {
-#if (DEBUG && !DISABLE_DEBUG) || !DISABLE_DRAGONECS_ASSERT_CHEKS
+#if DEBUG || !DISABLE_DRAGONECS_ASSERT_CHEKS
             if (relEntityID <= 0 || relEntityID >= _relEntityInfos.Length) { Throw.UndefinedException(); }
 #endif
             return _relEntityInfos[relEntityID].start;
@@ -206,7 +209,7 @@ namespace DCFApixels.DragonECS
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int GetRelationEnd(int relEntityID)
         {
-#if (DEBUG && !DISABLE_DEBUG) || !DISABLE_DRAGONECS_ASSERT_CHEKS
+#if DEBUG || !DISABLE_DRAGONECS_ASSERT_CHEKS
             if (relEntityID <= 0 || relEntityID >= _relEntityInfos.Length) { Throw.UndefinedException(); }
 #endif
             return _relEntityInfos[relEntityID].end;

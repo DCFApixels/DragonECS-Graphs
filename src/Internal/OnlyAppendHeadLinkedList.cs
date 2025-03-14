@@ -1,4 +1,7 @@
-﻿using System.Runtime.CompilerServices;
+﻿#if DISABLE_DEBUG
+#undef DEBUG
+#endif
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace DCFApixels.DragonECS.Graphs.Internal

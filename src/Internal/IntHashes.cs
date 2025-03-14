@@ -1,4 +1,7 @@
-﻿namespace DCFApixels.DragonECS.Graphs.Internal
+﻿#if DISABLE_DEBUG
+#undef DEBUG
+#endif
+namespace DCFApixels.DragonECS.Graphs.Internal
 {
     internal static unsafe class IntHash
     {
