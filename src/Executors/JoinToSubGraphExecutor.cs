@@ -64,7 +64,7 @@ namespace DCFApixels.DragonECS.Graphs.Internal
         private SubGraphMap ExecuteFor_Internal(EcsSpan span, JoinMode mode)
         {
             //_executeMarker.Begin();
-#if DEBUG || ENABLE_DRAGONECS_ASSERT_CHEKS
+#if DEBUG || DRAGONECS_STABILITY_MODE
             if (span.IsNull) { /*_executeMarker.End();*/ Throw.ArgumentNull(nameof(span)); }
             if (span.WorldID != _graphWorld.ID) { /*_executeMarker.End();*/ Throw.Quiery_ArgumentDifferentWorldsException(); }
 #endif
