@@ -1,6 +1,7 @@
 ﻿#if DISABLE_DEBUG
 #undef DEBUG
 #endif
+using DCFApixels.DragonECS.Core;
 using DCFApixels.DragonECS.Graphs.Internal;
 
 namespace DCFApixels.DragonECS
