@@ -10,10 +10,10 @@ namespace DCFApixels.DragonECS
     [MetaID("DragonECS_ECC4CF479301897718600925B00A7DB4")]
     public sealed class EcsGraphWorld : EcsWorld, IInjectionUnit, IInjectionBlock
     {
-        public EcsGraphWorld() : base() { }
-        public EcsGraphWorld(EcsWorldConfig config = null, string name = null, short worldID = -1) : base(config, name == null ? "Default" : name, worldID) { }
-        public EcsGraphWorld(IConfigContainer configs, string name = null, short worldID = -1) : base(configs, name == null ? "Default" : name, worldID) { }
-
+        private const string DEFAULT_NAME = "Graph";
+        public EcsGraphWorld() : base(default(EcsWorldConfig), DEFAULT_NAME) { }
+        public EcsGraphWorld(EcsWorldConfig config = null, string name = null, short worldID = -1) : base(config, name == null ? DEFAULT_NAME : name, worldID) { }
+        public EcsGraphWorld(IConfigContainer configs, string name = null, short worldID = -1) : base(configs, name == null ? DEFAULT_NAME : name, worldID) { }
         void IInjectionUnit.InitInjectionNode(InjectionGraph nodes)
         {
             nodes.AddNode(this);

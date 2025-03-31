@@ -88,9 +88,27 @@ namespace DCFApixels.DragonECS
         {
             if (_matrix.TryGetValue(startEntityID, endEntityID, out int relEntityID))
             {
+#if DEBUG && DRAGONECS_DEEP_DEBUG
+                if(_graphWorld.IsUsed(relEntityID) == false)
+                {
+                    throw new InvalidOperationException();
+                }
+                var (s, e) = GetRelationStartEnd(relEntityID);
+                if (s != startEntityID || e != endEntityID)
+                {
+                    throw new InvalidOperationException();
+                }
+#endif
                 return relEntityID;
             }
             return NewRelationInternal(startEntityID, endEntityID);
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int GetOrNewRelationNoDirection(int entityID, int otherEntityID)
+        {
+            return GetOrNewRelation(
+                entityID < otherEntityID ? entityID : otherEntityID,
+                entityID > otherEntityID ? entityID : otherEntityID);
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int GetOrNewInverseRelation(int relEntityID)
@@ -106,6 +124,15 @@ namespace DCFApixels.DragonECS
         private int NewRelationInternal(int startEntityID, int endEntityID)
         {
             int relEntityID = _graphWorld.NewEntity();
+
+#if DEBUG && DRAGONECS_DEEP_DEBUG
+            var (s, e) = GetRelationStartEnd(relEntityID);
+            if (s != 0 || e != 0)
+            {
+                throw new InvalidOperationException();
+            }
+#endif
+
             _matrix.Add(startEntityID, endEntityID, relEntityID);
             _relEntityInfos[relEntityID] = new RelationInfo(startEntityID, endEntityID);
             _count++;
